@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "ataker-boop"
+version = "0.1.0"
+description = "Атакующий модуль Крепости — adversarial-тестирование SecurityPipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "loguru",
+]
+
+[project.optional-dependencies]
+llm = ["openai"]
+full = ["openai", "chromadb"]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["ataker*"]

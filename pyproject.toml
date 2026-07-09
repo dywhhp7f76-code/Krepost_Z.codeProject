@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools >= 68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "krepost"
+version = "2.2.0"
+description = "Krepost — 4-layer AI Security Pipeline with Smart Cache"
+requires-python = ">= 3.10"
+readme = "README.md"
+
+dependencies = [
+    "loguru",
+    "numpy",
+    "pydantic >= 2.0",
+    "sentence-transformers",
+    "chromadb",
+]
+
+[project.optional-dependencies]
+presidio = [
+    "presidio-analyzer",
+    "presidio-anonymizer",
+]
+api = [
+    "fastapi >= 0.110",
+    "uvicorn >= 0.27",
+]
+ollama = [
+    "ollama >= 0.3",
+]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "fastapi >= 0.110",
+    "httpx",
+]
+
+# Явная конфигурация: в корне несколько top-level пакетов (krepost, Probnoki,
+# tests) плюс устаревший дубликат src/krepost — авто-дискавери либо падает,
+# либо молча ставит src-копию. Ставим только корневой krepost/.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["krepost*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
