@@ -160,6 +160,12 @@ class _CacheBase:
         # Мутация словарей остаётся на loop (быстро/атомарно), на диск пишем
         # по снимку в отдельном потоке; Lock исключает гонку на общий tmp-файл.
         self._disk_lock = asyncio.Lock()
+        # #16: синхронный замок для jsonl — _save_entry_append (добавление в
+        # конец) и _full_rewrite (полная перезапись) конкурентно пишут в один
+        # файл. Без замока append после rewrite мог потеряться или рассыпать
+        # файл. threading.Lock — потому что запись синхронная (на loop/в потоке).
+        import threading
+        self._jsonl_lock = threading.Lock()
 
     def _emit(self, event_type: CacheEventType, level: EventLevel,
               message: str, payload: Optional[dict] = None) -> None:
@@ -180,6 +186,7 @@ class _CacheBase:
                 logger.error(f"on_event callback failed: {e}")
 
     def _atomic_write(self, path: Path, content: str) -> None:
+        # #16: serialize full-rewrite vs append на одном jsonl-файле.
         tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(content, encoding="utf-8")
         tmp.replace(path)
@@ -296,8 +303,9 @@ class QueryEmbeddingCache(_CacheBase):
         self._emit(CacheEventType.PUT, EventLevel.GREEN, f"L1 put | key={key}")
 
     def _save_entry_append(self, entry: L1Entry) -> None:
-        with open(self._jsonl_path, "a", encoding="utf-8") as f:
-            f.write(entry.model_dump_json() + "\n")
+        with self._jsonl_lock:  # #16: не гоняться с _full_rewrite
+            with open(self._jsonl_path, "a", encoding="utf-8") as f:
+                f.write(entry.model_dump_json() + "\n")
 
     def _save_embeddings(self) -> None:
         if not self._embeddings:
@@ -311,8 +319,9 @@ class QueryEmbeddingCache(_CacheBase):
             self._full_rewrite()
 
     def _full_rewrite(self) -> None:
-        content = "\n".join(e.model_dump_json() for e in self._entries.values()) + "\n"
-        self._atomic_write(self._jsonl_path, content)
+        with self._jsonl_lock:  # #16: атомарный снимок + запись
+            content = "\n".join(e.model_dump_json() for e in self._entries.values()) + "\n"
+            self._atomic_write(self._jsonl_path, content)
 
     def _evict(self, target_size: int) -> None:
         if len(self._entries) <= target_size:
@@ -499,8 +508,9 @@ class RAGResultsCache(_CacheBase):
         self._save_embeddings()
 
     def _save_entry_append(self, entry: L2Entry) -> None:
-        with open(self._jsonl_path, "a", encoding="utf-8") as f:
-            f.write(entry.model_dump_json() + "\n")
+        with self._jsonl_lock:  # #16
+            with open(self._jsonl_path, "a", encoding="utf-8") as f:
+                f.write(entry.model_dump_json() + "\n")
 
     def _save_embeddings(self) -> None:
         if not self._embeddings:
@@ -508,9 +518,10 @@ class RAGResultsCache(_CacheBase):
         self._atomic_write_npz(self._npz_path, self._embeddings)
 
     def _full_rewrite(self) -> None:
-        content = "\n".join(e.model_dump_json() for e in self._entries.values())
-        if content:
-            content += "\n"
+        with self._jsonl_lock:  # #16
+            content = "\n".join(e.model_dump_json() for e in self._entries.values())
+            if content:
+                content += "\n"
         self._atomic_write(self._jsonl_path, content)
 
     def stats(self) -> CacheStats:
@@ -638,13 +649,15 @@ class LLMResponseCache(_CacheBase):
         self._full_rewrite()
 
     def _save_entry_append(self, entry: L3Entry) -> None:
-        with open(self._jsonl_path, "a", encoding="utf-8") as f:
-            f.write(entry.model_dump_json() + "\n")
+        with self._jsonl_lock:  # #16
+            with open(self._jsonl_path, "a", encoding="utf-8") as f:
+                f.write(entry.model_dump_json() + "\n")
 
     def _full_rewrite(self) -> None:
-        content = "\n".join(e.model_dump_json() for e in self._entries.values())
-        if content:
-            content += "\n"
+        with self._jsonl_lock:  # #16
+            content = "\n".join(e.model_dump_json() for e in self._entries.values())
+            if content:
+                content += "\n"
         self._atomic_write(self._jsonl_path, content)
 
     def stats(self) -> CacheStats:

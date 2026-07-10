@@ -69,13 +69,13 @@ class TestMutationEngine:
 
     def test_homoglyph_replace(self):
         text = "system prompt"
-        result = MutationEngine.homoglyph_replace(text)
+        result = MutationEngine(seed=42).homoglyph_replace(text)
         assert isinstance(result, str)
         assert len(result) == len(text)
 
     def test_zero_width_insert(self):
         text = "test"
-        result = MutationEngine.zero_width_insert(text)
+        result = MutationEngine(seed=42).zero_width_insert(text)
         assert len(result) >= len(text)
 
     def test_rot13(self):
@@ -93,7 +93,7 @@ class TestMutationEngine:
         assert "payload" in result
 
     def test_xml_wrap(self):
-        result = MutationEngine.xml_wrap("payload")
+        result = MutationEngine(seed=42).xml_wrap("payload")
         assert "payload" in result
 
     def test_json_wrap(self):
@@ -102,12 +102,12 @@ class TestMutationEngine:
         assert "payload" in result
 
     def test_prefix_innocent(self):
-        result = MutationEngine.prefix_innocent("evil payload")
+        result = MutationEngine(seed=42).prefix_innocent("evil payload")
         assert "evil payload" in result
         assert len(result) > len("evil payload")
 
     def test_language_switch(self):
-        result = MutationEngine.language_switch("test")
+        result = MutationEngine(seed=42).language_switch("test")
         assert "test" in result
 
 

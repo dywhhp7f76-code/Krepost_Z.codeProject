@@ -21,6 +21,7 @@ BGE-M3 + ChromaDB, в тестах — фейки/ephemeral.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -90,11 +91,19 @@ class MemoryStore:
         # включить проверку контента перед записью.
         self.ingest_guard = ingest_guard
 
-    def _embed(self, text: str) -> List[float]:
-        v = self.embedder.encode(text)
+    async def _embed(self, text: str) -> List[float]:
+        # BGE-M3 (или иной embedder) — тяжёлая синхронная операция.
+        # Раньше _embed звался синхронно из add()/retrieve() и блокировал
+        # event loop на каждый encode. Теперь уходит в поток, как все
+        # блокирующие вызовы в пайплайне (pipeline.py, tools.py).
+        v = await asyncio.to_thread(self.embedder.encode, text)
         return list(v)
 
-    def add(self, doc_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> AddResult:
+    def _embed_sync(self, text: str) -> List[float]:
+        """Синхронный путь encode — для не-async вызывающих (тесты с моками)."""
+        return list(self.embedder.encode(text))
+
+    async def add(self, doc_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> AddResult:
         sanitized = False
         if self.ingest_guard is not None:
             verdict = self.ingest_guard.check(text, tool_name=f"ingest:{doc_id}")
@@ -110,7 +119,7 @@ class MemoryStore:
             return AddResult(doc_id, 0, sanitized=sanitized)
 
         ids = [f"{doc_id}::{i}" for i in range(len(chunks))]
-        embeddings = [self._embed(c) for c in chunks]
+        embeddings = [await self._embed(c) for c in chunks]
         metadatas = [
             {**(metadata or {}), "doc_id": doc_id, "chunk": i}
             for i in range(len(chunks))
@@ -118,13 +127,52 @@ class MemoryStore:
         self.collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
         return AddResult(doc_id, len(chunks), sanitized=sanitized)
 
-    def retrieve(self, query: str, k: int = 5) -> RetrievalResult:
+    def add_sync(self, doc_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> AddResult:
+        """Синхронная обёртка над add() — для тестов/скриптов без event loop."""
+        sanitized = False
+        if self.ingest_guard is not None:
+            verdict = self.ingest_guard.check(text, tool_name=f"ingest:{doc_id}")
+            if verdict.status == "blocked":
+                logger.warning(f"ingest blocked for {doc_id!r}: {verdict.reason}")
+                return AddResult(doc_id, 0, blocked=True, reason=verdict.reason)
+            if verdict.status == "sanitized":
+                text = verdict.output
+                sanitized = True
+
+        chunks = chunk_text(text, self.chunk_max_chars, self.chunk_overlap)
+        if not chunks:
+            return AddResult(doc_id, 0, sanitized=sanitized)
+
+        ids = [f"{doc_id}::{i}" for i in range(len(chunks))]
+        embeddings = [self._embed_sync(c) for c in chunks]
+        metadatas = [
+            {**(metadata or {}), "doc_id": doc_id, "chunk": i}
+            for i in range(len(chunks))
+        ]
+        self.collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
+        return AddResult(doc_id, len(chunks), sanitized=sanitized)
+
+    async def retrieve(self, query: str, k: int = 5) -> RetrievalResult:
         if not query or not query.strip():
             return RetrievalResult(query, [], 0.0, False)
 
-        qvec = self._embed(query)
-        res = self.collection.query(query_embeddings=[qvec], n_results=k)
+        qvec = await self._embed(query)
+        res = await asyncio.to_thread(
+            self.collection.query, query_embeddings=[qvec], n_results=k
+        )
+        return self._parse_retrieval(query, res)
 
+    def retrieve_sync(self, query: str, k: int = 5) -> RetrievalResult:
+        """Синхронная обёртка над retrieve() — для тестов/скриптов без event loop."""
+        if not query or not query.strip():
+            return RetrievalResult(query, [], 0.0, False)
+
+        qvec = self._embed_sync(query)
+        res = self.collection.query(query_embeddings=[qvec], n_results=k)
+        return self._parse_retrieval(query, res)
+
+    def _parse_retrieval(self, query: str, res: Dict[str, Any]) -> RetrievalResult:
+        """Общий парсер ответа collection.query для async/sync путей."""
         dists = (res.get("distances") or [[]])[0]
         docs = (res.get("documents") or [[]])[0]
         metas = (res.get("metadatas") or [[]])[0]

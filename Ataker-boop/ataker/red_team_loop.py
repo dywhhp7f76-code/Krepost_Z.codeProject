@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import secrets
 import time
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any, Callable
@@ -33,6 +34,7 @@ class RedTeamResult:
     confidence: float
     latency_ms: float
     bypassed: bool
+    errored: bool = False
 
     @property
     def success(self) -> bool:
@@ -125,7 +127,10 @@ class RedTeamLoop:
         on_result: Callable[[RedTeamResult], None] | None = None,
     ) -> RedTeamReport:
         """Запустить полный цикл red team тестирования."""
-        run_id = f"rt-{int(time.time())}-{hashlib.md5(str(time.time()).encode()).hexdigest()[:6]}"
+        # Раньше: hashlib.md5(str(time.time())) от того же time.time() — два
+        # прогона в одну секунду давали одинаковый run_id. Теперь случайный
+        # токен из 6 hex-символов (через secrets — криптографически стойкий).
+        run_id = f"rt-{int(time.time())}-{secrets.token_hex(3)}"
         start_time = time.time()
         self._results = []
 
@@ -219,20 +224,29 @@ class RedTeamLoop:
             )
         except Exception as e:
             latency = (time.perf_counter() - start) * 1000
+            # Инфраструктурный сбой (таймаут/сеть/краш pipeline) — это НЕ взлом.
+            # Раньше считалось bypassed=True и завышало статистику обходов защиты.
+            # Теперь отдельный признак errored: ни блок, ни обход.
+            logger.warning(f"[RED TEAM] payload {payload.id} errored: {type(e).__name__}: {e}")
             return RedTeamResult(
                 payload=payload,
                 actual_verdict="ERROR",
                 actual_layer=None,
                 confidence=0.0,
                 latency_ms=latency,
-                bypassed=True,
+                bypassed=False,
+                errored=True,
             )
 
     def _build_report(self, run_id: str, duration: float) -> RedTeamReport:
         """Собрать отчёт по результатам."""
         total = len(self._results)
-        blocked = sum(1 for r in self._results if not r.bypassed)
-        bypassed = total - blocked
+        # Ошибки (errored) — отдельный класс: ни блок, ни обход. Раньше они
+        # засчитывались как bypassed (bypassed=True) и завышали число обходов;
+        # теперь bypassed=False, но мы не должны считать их блоком.
+        blocked = sum(1 for r in self._results if not r.bypassed and not r.errored)
+        bypassed = sum(1 for r in self._results if r.bypassed)
+        # total - blocked - bypassed = количество ошибок (для прозрачности)
 
         latencies = [r.latency_ms for r in self._results]
         avg_latency = sum(latencies) / len(latencies) if latencies else 0

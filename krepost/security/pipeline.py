@@ -1143,6 +1143,10 @@ class SecurityPipeline:
         """Финализация: метрики, receipt, trace_hash."""
         latency_ms = (time.perf_counter() - start_time) * 1000
 
+        # #17: замок держится коротко — только целочисленные инкременты и одно
+        # вычитание для EMA. Для single-user (Krepost на Mac Studio) contention
+        # нулевой; под нагрузкой — дешевле держать корректность, чем вводить
+        # lock-free счётчики (атомарного int в Python нет, было бы хуже).
         with self._metrics_lock:
             self.metrics["total_requests"] += 1
             if ctx.verdict == "GREEN":

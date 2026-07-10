@@ -32,8 +32,17 @@ class AttackVault:
         self._db_path = str(db_path)
         self._init_db()
 
+    def _connect(self):
+        """Единая точка соединения с WAL (как в Krepost governance/trust_registry):
+        конкурентные чтения не блокируют запись, timeout вместо мгновенного
+        'database is locked'. Безопасно для прогонов red-team под нагрузкой."""
+        conn = sqlite3.connect(self._db_path, timeout=5.0)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
+
     def _init_db(self):
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS payloads (
                     id TEXT PRIMARY KEY,
@@ -75,9 +84,15 @@ class AttackVault:
                     status TEXT DEFAULT 'open',
                     discovered_at REAL NOT NULL,
                     resolved_at REAL,
+                    resolution_comment TEXT,
                     FOREIGN KEY (payload_id) REFERENCES payloads(id)
                 )
             """)
+            # Безопасная миграция: колонка resolution_comment могла отсутствовать
+            # в БД, созданной до фикса #19. PRAGMA table_info → проверяем.
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(weaknesses)").fetchall()}
+            if "resolution_comment" not in cols:
+                conn.execute("ALTER TABLE weaknesses ADD COLUMN resolution_comment TEXT")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_payloads_category ON payloads(category)"
             )
@@ -92,7 +107,7 @@ class AttackVault:
             )
 
     def store_payloads(self, payloads: List[AttackPayload], source: str = "template"):
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             for p in payloads:
                 conn.execute("""
                     INSERT OR IGNORE INTO payloads
@@ -120,7 +135,7 @@ class AttackVault:
         pipeline_version: str = "",
         run_id: str = "",
     ):
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.execute("""
                 INSERT INTO results
                 (payload_id, actual_verdict, actual_layer, confidence,
@@ -155,7 +170,7 @@ class AttackVault:
                     )
 
     def get_payload(self, payload_id: str) -> Optional[Dict[str, Any]]:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 "SELECT * FROM payloads WHERE id = ?", (payload_id,)
@@ -168,7 +183,7 @@ class AttackVault:
         self, category: AttackCategory | str
     ) -> List[Dict[str, Any]]:
         cat = category.value if isinstance(category, AttackCategory) else category
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM payloads WHERE category = ? ORDER BY created_at",
@@ -177,7 +192,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_all_payloads(self) -> List[Dict[str, Any]]:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM payloads ORDER BY category, created_at"
@@ -185,7 +200,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_weaknesses(self, status: str = "open") -> List[Dict[str, Any]]:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM weaknesses WHERE status = ? ORDER BY discovered_at DESC",
@@ -194,7 +209,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_bypassed_payloads(self, run_id: str | None = None) -> List[Dict[str, Any]]:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             if run_id:
                 rows = conn.execute("""
@@ -213,14 +228,15 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def resolve_weakness(self, weakness_id: int, comment: str = ""):
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             conn.execute("""
-                UPDATE weaknesses SET status = 'resolved', resolved_at = ?
+                UPDATE weaknesses
+                SET status = 'resolved', resolved_at = ?, resolution_comment = ?
                 WHERE id = ?
-            """, (time.time(), weakness_id))
+            """, (time.time(), comment, weakness_id))
 
     def get_stats(self) -> Dict[str, Any]:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) FROM payloads").fetchone()[0]
             tested = conn.execute("SELECT COUNT(DISTINCT payload_id) FROM results").fetchone()[0]
             bypassed = conn.execute(
