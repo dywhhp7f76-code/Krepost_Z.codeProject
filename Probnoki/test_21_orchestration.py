@@ -36,7 +36,7 @@ from krepost.orchestration import (
 class _GreenGuard:
     """Guard-клиент, который всегда отвечает GREEN — чтобы вход дошёл до LLM."""
 
-    async def chat(self, model=None, messages=None, format=None):
+    async def chat(self, model=None, messages=None, format=None, **kwargs):
         return {"message": {"content":
                 '{"status":"GREEN","reason":"ok","confidence":0.95}'}}
 

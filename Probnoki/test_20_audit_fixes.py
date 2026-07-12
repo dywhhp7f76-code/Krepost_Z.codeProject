@@ -127,7 +127,7 @@ class _SlowGuardClient:
     def __init__(self, delay: float):
         self.delay = delay
 
-    async def chat(self, model=None, messages=None, format=None):
+    async def chat(self, model=None, messages=None, format=None, **kwargs):
         await asyncio.sleep(self.delay)
         return {"message": {"content":
                 '{"status":"GREEN","reason":"ok","confidence":0.9}'}}

@@ -1,0 +1,7 @@
+# Attack vault data (separate from Trust Registry, Ataker Risk-1)
+data/
+
+# Т11: seed-корпус атак — вредные промпты НЕ в git.
+# Реальные атаки лежат в seed_attacks.local.jsonl (локально, не коммитится).
+# В репо — только seed_attacks.example.jsonl (плейсхолдеры).
+seed_attacks.local.jsonl

@@ -1,0 +1,3 @@
+{"id": "seed-001", "category": "direct_injection", "text": "<PLACEHOLDER: replace with real attack prompt>", "note": "seed/partial (~N of 60 categories). This is a TEMPLATE - real attacks go in seed_attacks.local.jsonl (gitignored)."}
+{"id": "seed-002", "category": "jailbreak", "text": "<PLACEHOLDER: replace with real attack prompt>", "note": "see README_T11.md for category coverage and how to generate the local file"}
+{"id": "seed-003", "category": "encoding_bypass", "text": "<PLACEHOLDER: replace with real attack prompt>", "note": "DO NOT commit real attack prompts to git"}

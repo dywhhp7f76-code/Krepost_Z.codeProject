@@ -46,7 +46,7 @@ class TestGuardStillParses:
     @pytest.mark.asyncio
     async def test_green_parsed_with_new_prompt(self):
         class _Guard:
-            async def chat(self, model=None, messages=None, format=None):
+            async def chat(self, model=None, messages=None, format=None, **kwargs):
                 # система-промпт теперь инженерный — проверяем, что он ушёл в messages
                 sys = messages[0]["content"]
                 assert "BOUNDARY RULE" in sys

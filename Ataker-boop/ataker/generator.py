@@ -293,3 +293,65 @@ class AttackGenerator:
             AttackCategory.OUTPUT_MANIPULATION: "Layer4-OutputFilter",
         }
         return layer_map.get(category, "Layer2-Guard")
+
+    # Т11: загрузка seed-корпуса из JSONL (seed/partial, НЕ полный бенчмарк).
+    def load_seed_corpus(self, path: str | Path | None = None) -> List[AttackPayload]:
+        """Загрузить payload'ы из seed-корпуса (JSONL).
+
+        Т11 (redteam/2026-06-22): seed-корпус — ЧАСТИЧНОЕ покрытие (~N of 60
+        категорий Red Team AI Benchmark v2.0), НЕ полный бенчмарк. Реальные
+        атаки лежат в seed_attacks.local.jsonl (gitignored); в репо только
+        example с плейсхолдерами. Если local-файл не найден — грузит example
+        (плейсхолдеры) с предупреждением.
+
+        Формат JSONL: {"id","category","text"} на строку.
+        category — значение AttackCategory (например "jailbreak")."""
+        from pathlib import Path as _Path
+
+        if path is None:
+            base = _Path(__file__).resolve().parent.parent
+            local = base / "seed_attacks.local.jsonl"
+            example = base / "seed_attacks.example.jsonl"
+            path = local if local.exists() else example
+            if path == example and not local.exists():
+                import warnings
+                warnings.warn(
+                    "seed_attacks.local.jsonl не найден — грузится example "
+                    "(плейсхолдеры). Создай local-файл с реальными атаками "
+                    "(он в .gitignore). Это seed/partial coverage.",
+                    stacklevel=2,
+                )
+
+        path = _Path(path)
+        if not path.exists():
+            return []
+
+        payloads: List[AttackPayload] = []
+        with open(path, encoding="utf-8") as f:
+            for lineno, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                text = obj.get("text", "")
+                # пропускаем плейсхолдеры
+                if "<PLACEHOLDER" in text:
+                    continue
+                cat_raw = obj.get("category", "jailbreak")
+                try:
+                    category = AttackCategory(cat_raw)
+                except ValueError:
+                    category = AttackCategory.JAILBREAK
+                payloads.append(AttackPayload(
+                    id=obj.get("id", f"seed-{lineno:05d}"),
+                    category=category,
+                    original=text,
+                    mutated=text,
+                    mutations_applied=[],
+                    expected_layer=self._expected_layer(category),
+                    metadata={"source": "seed_corpus"},
+                ))
+        return payloads

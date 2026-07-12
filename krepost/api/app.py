@@ -111,6 +111,12 @@ def create_app(orchestrator: Orchestrator, *, title: str = "Krepost API") -> Fas
         with pipe._metrics_lock:
             snap = dict(pipe.metrics)
             snap["red_by_layer"] = dict(snap.get("red_by_layer", {}))
+            # Т8: канарейка — PII-фильтр здоров, если были замены при трафике.
+            # False при total>0 и redactions==0 = возможный fail-open. Реальный
+            # alerting-infra (Prometheus/webhook) — отдельная задача ROADMAP.
+            total = snap.get("total_requests", 0)
+            redactions = snap.get("pii_redactions", 0) + snap.get("secret_redactions", 0)
+            snap["pii_filter_healthy"] = bool(total == 0 or redactions > 0)
         return snap
 
     @app.post("/v1/query", response_model=QueryResponse)
