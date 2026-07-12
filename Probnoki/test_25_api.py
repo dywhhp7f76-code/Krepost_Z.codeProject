@@ -25,7 +25,7 @@ from krepost.security.pipeline import SecurityPipeline  # noqa: E402
 
 
 class _GreenGuard:
-    async def chat(self, model=None, messages=None, format=None):
+    async def chat(self, model=None, messages=None, format=None, **kwargs):
         return {"message": {"content":
                 '{"status":"GREEN","reason":"ok","confidence":0.9}'}}
 

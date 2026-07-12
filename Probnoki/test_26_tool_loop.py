@@ -29,7 +29,7 @@ from krepost.security.url_guard import UrlGuard
 
 
 class _GreenGuard:
-    async def chat(self, model=None, messages=None, format=None):
+    async def chat(self, model=None, messages=None, format=None, **kwargs):
         return {"message": {"content":
                 '{"status":"GREEN","reason":"ok","confidence":0.9}'}}
 

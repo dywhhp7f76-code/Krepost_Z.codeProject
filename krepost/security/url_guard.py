@@ -33,7 +33,7 @@ import ipaddress
 import re
 import socket
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 from urllib.parse import urlsplit
 
 try:
@@ -187,3 +187,58 @@ class UrlGuard:
         if any(_OCTAL_LABEL.match(label) for label in host.split(".")):
             return True
         return False
+
+    # Т6: cross-host redirect protection (foundation/2026-06-16, GHSA-3mj3-57v2-4636).
+    # Редирект на чужой хост утекает credentials/token. validate_redirect решает,
+    # можно ли следовать с from_url на to_url — same-host OK, cross-host блок.
+    def validate_redirect(self, from_url: str, to_url: str) -> UrlVerdict:
+        """Проверить, можно ли следовать редиректу с from_url на to_url.
+
+        Сначала к to_url применяется полный check() (SSRF/схема/хост). Если
+        to_url проходит — сравниваем host: same-host разрешаем, cross-host
+        блокируем (защита от утечки credentials на чужой хост)."""
+        verdict = self.check(to_url)
+        if not verdict.allowed:
+            return verdict
+        try:
+            from_host = (urlsplit(from_url).hostname or "").lower()
+            to_host = (urlsplit(to_url).hostname or "").lower()
+        except ValueError as e:
+            return UrlVerdict(False, to_url, reason=f"malformed_redirect:{e}")
+        if from_host != to_host:
+            return UrlVerdict(False, to_url, reason=f"cross_host_redirect:{from_host}->{to_host}")
+        return verdict
+
+
+def follow_redirects_safely(
+    fetch_fn: Callable[..., Any],
+    url: str,
+    guard: UrlGuard,
+    *,
+    max_redirects: int = 5,
+) -> Tuple[str, List[str]]:
+    """Синхронный fetch с ручным следованием редиректам и cross-host проверкой.
+
+    fetch_fn(url, allow_redirects=False, return_response=True) должен вернуть
+    объект с полями .status_code, .text, .headers. Возвращает (text, visited_urls).
+    Блокируется при: cross-host редиректе, SSRF в Location, превышении cap
+    (защита от same-host цикла). Т6: cap обязателен — иначе цепочка same-host
+    редиректов может зациклить."""
+    visited: List[str] = []
+    current = url
+    for _ in range(max_redirects + 1):
+        verdict = guard.check(current)
+        if not verdict.allowed:
+            raise ValueError(f"fetch blocked: {verdict.reason}")
+        resp = fetch_fn(current, allow_redirects=False, return_response=True)
+        visited.append(current)
+        if getattr(resp, "status_code", 200) not in (301, 302, 303, 307, 308):
+            return getattr(resp, "text", str(resp)), visited
+        location = resp.headers.get("Location") or resp.headers.get("location")
+        if not location:
+            return getattr(resp, "text", str(resp)), visited
+        redirect_verdict = guard.validate_redirect(current, location)
+        if not redirect_verdict.allowed:
+            raise ValueError(f"redirect blocked: {redirect_verdict.reason}")
+        current = redirect_verdict.url
+    raise ValueError("max_redirects_exceeded")

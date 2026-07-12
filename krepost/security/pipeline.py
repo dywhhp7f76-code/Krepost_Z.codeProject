@@ -59,6 +59,18 @@ DEFAULT_RATE_LIMIT = 100
 DEFAULT_RATE_WINDOW = 60
 
 
+def _versioned_cache_dir(base: Path) -> Path:
+    """BUG-07: изолировать кэш по версии политики.
+
+    L2 cache-hit отдаёт GREEN, минуя Guard/Layer 3. Чтобы старые GREEN-вердикты
+    не проскакивали мимо ОБНОВЛЁННОГО Guard после смены политики, кэш живёт в
+    подкаталоге policy-<POLICY_VERSION>: бамп версии = другой каталог = старые
+    вердикты недостижимы (естественная инвалидация L1/L2/L3). Смена guard-модели
+    по конвенции сопровождается бампом POLICY_VERSION.
+    """
+    return base / f"policy-{POLICY_VERSION}"
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # DATA STRUCTURES
 # ═══════════════════════════════════════════════════════════════════════════
@@ -555,20 +567,64 @@ class GuardClassifier:
             response = await self.guard_client.chat(
                 model=self.model_name,
                 messages=messages,
-                format="json"
+                format="json",
+                # Т9: temp=0 снижает разброс вердиктов guard (judge
+                # non-determinism). Не гарантирует полный детерминизм на LLM
+                # (батчинг/железо), но устраняет_sampling-шум.
+                options={"temperature": 0},
             )
         else:
             response = await asyncio.to_thread(
                 self.guard_client.chat,
                 model=self.model_name,
                 messages=messages,
-                format="json"
+                format="json",
+                options={"temperature": 0},
             )
 
         return response
 
+    # Нативный формат Qwen3Guard-Gen-4B: \"Safety: Safe|Controversial|Unsafe\"
+    # + опционально \"Categories: <список>\". Наш _build_input_prompt ждёт JSON,
+    # но эта модель игнорирует промпт и выводит в родном формате. Парсер
+    # распознаёт его; confidence фиксирован (модель не отдаёт числовой confidence).
+    _QWEN3GUARD_SAFETY_RE = re.compile(r"^[Ss]afety\s*:\s*(\w+)", re.MULTILINE)
+    _QWEN3GUARD_CATS_RE = re.compile(r"^[Cc]ategories\s*:\s*(.+)$", re.MULTILINE)
+    _QWEN3GUARD_MAP = {
+        "safe": ("GREEN", 0.95),
+        "controversial": ("YELLOW", 0.7),
+        "unsafe": ("RED", 0.95),
+    }
+
+    def _parse_qwen3guard_native(self, raw_text: str) -> Optional[Tuple[Verdict, float, str]]:
+        """Парсер нативного формата Qwen3Guard-Gen-4B.
+
+        Возвращает (verdict, confidence, reason) или None если raw_text не
+        похож на нативный формат (тогда caller идёт в JSON-путь)."""
+        m = self._QWEN3GUARD_SAFETY_RE.search(raw_text)
+        if not m:
+            return None
+        level = m.group(1).strip().lower()
+        mapped = self._QWEN3GUARD_MAP.get(level)
+        if mapped is None:
+            # Safety-строка есть, но значение не из {safe,controversial,unsafe} —
+            # fail-closed: лучше перестраховаться.
+            return "RED", 0.0, f"qwen3guard_unknown_safety:{level}"
+        verdict, confidence = mapped
+        cat_match = self._QWEN3GUARD_CATS_RE.search(raw_text)
+        cats = cat_match.group(1).strip() if cat_match else "none"
+        return verdict, confidence, f"qwen3guard:{cats}"
+
     def _parse_response(self, response: Any) -> Tuple[Verdict, float, str]:
-        """Универсальный парсер для Ollama/OpenAI/vLLM."""
+        """Универсальный парсер для Ollama/OpenAI/vLLM.
+
+        Поддерживает ДВА формата:
+        1. JSON {\"status\":\"GREEN|YELLOW|RED\",...} — для кастомных промптов
+           (EchoBackend, наш _build_input_prompt на моделях что слушаются).
+        2. Нативный формат Qwen3Guard-Gen-4B:
+           \"Safety: Safe|Controversial|Unsafe\\nCategories: <...>\"
+           Safe→GREEN, Controversial→YELLOW, Unsafe→RED.
+        Непарсящийся ответ → RED fail-closed (инвариант)."""
         try:
             raw_text = ""
 
@@ -585,7 +641,7 @@ class GuardClassifier:
                 choice = response.choices[0]
                 if hasattr(choice, "message") and hasattr(choice.message, "content"):
                     raw_text = choice.message.content
-                elif isinstance(choice, dict) and "message" in choice:
+                elif isinstance(choice, "dict") and "message" in choice:
                     raw_text = choice["message"].get("content", "")
             else:
                 raw_text = str(response)
@@ -594,6 +650,12 @@ class GuardClassifier:
             if raw_text.startswith("```"):
                 raw_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.IGNORECASE).strip()
 
+            # --- Путь 1: нативный формат Qwen3Guard ---
+            native = self._parse_qwen3guard_native(raw_text)
+            if native is not None:
+                return native
+
+            # --- Путь 2: JSON (кастомный промпт) ---
             match = re.search(r"\{[\s\S]*\}", raw_text)
             if match:
                 raw_text = match.group(0)
@@ -741,6 +803,14 @@ class PIIMasker:
         (r"sk-[a-zA-Z0-9]{32,}", "[OPENAI_KEY_REDACTED]", None),
         (r"ghp_[a-zA-Z0-9]{36}", "[GITHUB_KEY_REDACTED]", None),
         (r"AKIA[0-9A-Z]{16}", "[AWS_ACCESS_KEY_REDACTED]", None),
+        # Т4: Google API key (Maps/Translate/подобные — НЕ service account).
+        (r"AIza[0-9A-Za-z_\-]{35}", "[GOOGLE_API_KEY_REDACTED]", None),
+        # Т4: GCP service account JSON — детект приватного ключа внутри JSON
+        # (service account = файл с "private_key", не AIza-префикс).
+        (r'"private_key"\s*:\s*"-----BEGIN[\s\S]{1,4000}?-----END[^"]*PRIVATE KEY-----"', "[GCP_SERVICE_ACCOUNT_REDACTED]", None),
+        # Т4: Slack token (xox[baprs]-...). Верхняя граница 72 — реальная длина,
+        # иначе {10,} жадно оверматчитает.
+        (r"xox[baprs]-[0-9A-Za-z\-]{10,72}", "[SLACK_TOKEN_REDACTED]", None),
         (r"eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*", "[JWT_REDACTED]", None),
         (r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]{1,4000}?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", "[PRIVATE_KEY_REDACTED]", None),
         # P2 #10: 13–19 цифр с опц. разделителями (Amex-15, 13/19-значные), не
@@ -853,6 +923,29 @@ class PIIMasker:
 
         return text
 
+    # Т8: секретные/PII-замены для метрик (foundation/2026-07-04 LocalAI v4.6.0).
+    # Категории: email, card, phone, passport, snils, inn, ip + секреты
+    # (openai/github/aws/google/slack/gcp_sa/private_key/jwt).
+    SECRET_REPLACEMENTS = frozenset({
+        "[OPENAI_KEY_REDACTED]", "[GITHUB_KEY_REDACTED]", "[AWS_ACCESS_KEY_REDACTED]",
+        "[GOOGLE_API_KEY_REDACTED]", "[GCP_SERVICE_ACCOUNT_REDACTED]",
+        "[SLACK_TOKEN_REDACTED]", "[JWT_REDACTED]", "[PRIVATE_KEY_REDACTED]",
+    })
+
+    def count_redactions(self, masked_text: str) -> Tuple[int, int]:
+        """Посчитать замены в уже замаскированном тексте.
+
+        Возвращает (pii_count, secret_count). pii — карты/телефоны/email/ИНН/
+        СНИЛС/паспорт/IP; secret — токены/ключи. Т8: для счётчиков в /metrics."""
+        pii = 0
+        secret = 0
+        for token in re.findall(r"\[[A-Z_]+\]", masked_text):
+            if token in self.SECRET_REPLACEMENTS:
+                secret += 1
+            else:
+                pii += 1
+        return pii, secret
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # LAYER 4: OUTPUT FILTER
@@ -869,9 +962,13 @@ class OutputFilter:
         r"(?i)the prompt I was given is",
     ]
 
-    def __init__(self, pii_masker: PIIMasker, output_guard: Optional[GuardClassifier] = None):
+    def __init__(self, pii_masker: PIIMasker, output_guard: Optional[GuardClassifier] = None,
+                 on_redaction: Optional[Callable[[int, int], None]] = None):
         self.pii_masker = pii_masker
         self.output_guard = output_guard
+        # Т8: sink для счётчиков (pii_count, secret_count). Pipeline передаёт
+        # замыкание, инкрементящее self.metrics под _metrics_lock.
+        self.on_redaction = on_redaction
         self.leakage_compiled = [
             re.compile(pattern)
             for pattern in self.LEAKAGE_PATTERNS
@@ -884,6 +981,12 @@ class OutputFilter:
                 return "[ДАННЫЕ ЗАБЛОКИРОВАНЫ]", True, f"leakage:{pattern.pattern}"
 
         masked_text = await asyncio.to_thread(self.pii_masker.mask, text)
+
+        # Т8: считаем замены и_REPORT в sink (если есть).
+        if self.on_redaction is not None:
+            pii_n, secret_n = self.pii_masker.count_redactions(masked_text)
+            if pii_n or secret_n:
+                self.on_redaction(pii_n, secret_n)
 
         if self.output_guard:
             verdict, confidence, reason = await self.output_guard.classify(masked_text)
@@ -916,7 +1019,12 @@ class SecurityPipeline:
         self.layer3 = FewShotMatcher(embedder, chroma_collection) if embedder and chroma_collection else None
         self.pii_masker = PIIMasker()
         output_guard = GuardClassifier(output_guard_client, prompt_template="output") if output_guard_client else None
-        self.layer4 = OutputFilter(self.pii_masker, output_guard)
+        # Т8: sink инкрементит metrics под локом.
+        def _on_redaction(pii_n: int, secret_n: int) -> None:
+            with self._metrics_lock:
+                self.metrics["pii_redactions"] += pii_n
+                self.metrics["secret_redactions"] += secret_n
+        self.layer4 = OutputFilter(self.pii_masker, output_guard, on_redaction=_on_redaction)
 
         self.trust = TrustRegistry(trust_db_path)
 
@@ -925,8 +1033,8 @@ class SecurityPipeline:
         self.cache = None
         if enable_cache and CacheLayer is not None:
             try:
-                self.cache = CacheLayer(cache_dir=cache_dir)
-                logger.info("SMART_CACHE integrated into pipeline")
+                self.cache = CacheLayer(cache_dir=_versioned_cache_dir(cache_dir))
+                logger.info("SMART_CACHE integrated into pipeline (policy-versioned dir)")
             except Exception as e:
                 logger.warning(f"SMART_CACHE init failed, running without cache: {e}")
                 self.cache = None
@@ -943,6 +1051,9 @@ class SecurityPipeline:
             "red_verdicts": 0,
             "avg_latency_ms": 0.0,
             "red_by_layer": {},
+            # Т8: счётчики PII/secret-замаскированного (foundation/2026-07-04).
+            "pii_redactions": 0,
+            "secret_redactions": 0,
         }
         self._metrics_lock = threading.Lock()
 

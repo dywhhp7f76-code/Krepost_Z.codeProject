@@ -16,6 +16,13 @@ memory).
   фрагменты можно ещё раз просканировать (defense-in-depth против отравленной
   заметки, попавшей до появления guard'а).
 
+Immutable raw (memory/2026-06-28): add() пишет чанки с метаданными type="raw"
+по умолчанию — неизменяемый первоисточник. Производные (summary, деривативы)
+пишутся caller'ом с явным metadata={"type": "derived"} и хранятся отдельно.
+Переписывание памяти LLM-сводит деградирует качество (100%→52.6% в исследовании),
+поэтому raw НЕ перезаписывается, реорганизация — только детерминированными
+скриптами, не моделью.
+
 Embedder и collection внедряются (архитектура важнее модели §5.2): в проде
 BGE-M3 + ChromaDB, в тестах — фейки/ephemeral.
 """
@@ -121,7 +128,7 @@ class MemoryStore:
         ids = [f"{doc_id}::{i}" for i in range(len(chunks))]
         embeddings = [await self._embed(c) for c in chunks]
         metadatas = [
-            {**(metadata or {}), "doc_id": doc_id, "chunk": i}
+            {"type": "raw", **(metadata or {}), "doc_id": doc_id, "chunk": i}
             for i in range(len(chunks))
         ]
         self.collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
@@ -146,7 +153,7 @@ class MemoryStore:
         ids = [f"{doc_id}::{i}" for i in range(len(chunks))]
         embeddings = [self._embed_sync(c) for c in chunks]
         metadatas = [
-            {**(metadata or {}), "doc_id": doc_id, "chunk": i}
+            {"type": "raw", **(metadata or {}), "doc_id": doc_id, "chunk": i}
             for i in range(len(chunks))
         ]
         self.collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
@@ -194,9 +201,23 @@ class MemoryStore:
         top = chunks[0].score if chunks else 0.0
         return RetrievalResult(query, chunks, top, confident=top >= self.confidence_threshold)
 
+    @staticmethod
+    def _source_label(meta: Dict[str, Any], doc_id: str) -> str:
+        """Источник фрагмента для цитаты: явный 'src'/'source' из метаданных,
+        иначе doc_id. Позиция чанка — из 'chunk' (если есть). Т1 (memory/2026-06-16)."""
+        src = meta.get("src") or meta.get("source") or doc_id or "?"
+        chunk_idx = meta.get("chunk")
+        if chunk_idx is not None:
+            return f"{src}#{chunk_idx}"
+        return str(src)
+
     def build_context(self, result: RetrievalResult, *, guard: Optional[ToolOutputGuard] = None) -> str:
         """Собирает найденное в блок контекста с MemSyco-фреймингом. Опциональный
-        guard пере-сканирует фрагменты (защита от отравленной заметки)."""
+        guard пере-сканирует фрагменты (защита от отравленной заметки).
+
+        Каждый фрагмент помечается цитатой источника [src: файл#чанк] (Т1,
+        memory/2026-06-16) — паттерн LocalAI 4.4.0: кликабельный след
+        происхождения данных."""
         if result.empty:
             return ""
         lines = [MEMORY_HEADER]
@@ -205,7 +226,8 @@ class MemoryStore:
             if guard is not None:
                 v = guard.check(text, tool_name="memory")
                 text = "[фрагмент заблокирован]" if v.status == "blocked" else v.output
-            lines.append(f"- {text}")
+            src = self._source_label(c.metadata, c.doc_id)
+            lines.append(f"- [src: {src}] {text}")
         if not result.confident:
             lines.append(LOW_CONFIDENCE_NOTE)
         return "\n".join(lines)
