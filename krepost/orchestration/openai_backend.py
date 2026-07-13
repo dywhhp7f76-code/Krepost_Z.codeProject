@@ -184,7 +184,10 @@ class OpenAIGuardClient:
              format: Optional[str] = None, **kwargs) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"model": model, "messages": messages}
         if format == "json":
-            payload["response_format"] = {"type": "json_object"}
+            # response_format: LM Studio 0.4+ принимает только json_schema/text,
+            # старые серверы — json_object. Пробуем text (guard-модели типа
+            # Qwen3Guard отдают нативный текстовый формат, JSON не нужен).
+            payload["response_format"] = {"type": "text"}
         # Т9: проброс temperature из options (GuardClassifier передаёт
         # options={"temperature":0} для детерминизма guard).
         options = kwargs.get("options")

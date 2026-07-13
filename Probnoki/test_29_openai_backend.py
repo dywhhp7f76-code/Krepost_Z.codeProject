@@ -130,8 +130,9 @@ class TestGuardClient:
         g = OpenAIGuardClient(transport=ft)
         out = g.chat(model=GUARD_MODEL, messages=[{"role": "user", "content": "x"}], format="json")
         assert out == {"message": {"content": '{"status":"GREEN","reason":"ok","confidence":0.9}'}}
-        # format=json → response_format проставлен
-        assert ft.payloads[-1]["response_format"] == {"type": "json_object"}
+        # format=json → response_format=text (LM Studio 0.4+ не принимает
+        # json_object; Qwen3Guard отдаёт нативный текстовый формат)
+        assert ft.payloads[-1]["response_format"] == {"type": "text"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════

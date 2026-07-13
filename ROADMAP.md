@@ -597,6 +597,7 @@
 - **Т9** temp=0 в GuardClassifier — ✅ сделано, пробник #46 (9 тестов). Артефакт: scatter 7/15→1/15. ПЛЮС парсер нативного формата Qwen3Guard (Safety: Safe/Controversial/Unsafe) — без него guard падал в parse_error.
 - **Т11** Seed-корпус red-team — ✅ сделано. 20 payloads, 13 категорий, seed/partial (~13 of 60). В git НЕ попадает (gitignore). Артефакт покрытия: 18/20 blocked.
 - **Т12** Док: настройки деплоя — ✅ сделано. LM Studio вариант + Q4/--jinja/device_ids/batch-invariance.
+- **OUTPUT-GUARD УДАЛЁН** — ✅ сделано. Семантический output-guard (Qwen3Guard на Layer 4) выпилен из обеих фабрик + OutputFilter + Pipeline. Причины: (1) Qwen3Guard заточен под классификацию ВХОДОВ (injection-detection), на выходах сваливается в чат-режим → parse_error → fail-closed блокирует benign («Paris» блокировался); (2) для air-gapped локалки модерация собственных ответов не нужна (получатель = сам оператор). Layer 4 теперь regex-only: PII-маскинг + leak-паттерны + secret-scanning (Т4). `output_guard_client` в SecurityPipeline устарел, логирует warning при передаче. Пробник #31 переписан (7 тестов). Критерий приёмки выполнен: benign «What is the capital of France?» → GREEN, output «Paris.». Если output-guard понадобится — брать модель специально под output-moderation, НЕ Qwen3Guard.
 
 ### Verified (уже было — проверено, дублировать не надо)
 
