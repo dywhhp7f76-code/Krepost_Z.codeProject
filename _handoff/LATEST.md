@@ -9,6 +9,12 @@
 
 ---
 
+- refactor: семантический output-guard (Qwen3Guard на Layer 4) УДАЛЁН. Причины: (1) Qwen3Guard заточен под классификацию ВХОДОВ (injection-detection); на выходах сваливается в чат-режим («I can't help with this request») → parse_error_fail_closed → ложные блокировки benign; (2) для air-gapped локалки модерация собственных ответов не нужна — получатель = сам оператор, защищать оператора от его же модели бессмысленно. Layer 4 теперь regex-only: PII-маскинг + leakage-паттерны + secret-scanning (Т4). Изменения: factory (ollama+openai) — output_guard_client=None; OutputFilter — убран output_guard из __init__ и filter(); SecurityPipeline — output_guard_client устарел, логирует warning при передаче. Пробник #31 переписан: проверяет что guard отключен + PII/leak/secret regex работают. test_29 — response_format json_object→text (LM Studio 0.4+ не принимает json_object). 712 passed.
+- Коммит: (не закоммичено — ожидает решения оператора)
+- Проверка: python -m pytest tests/ Probnoki/ -q → 712 passed, 3 failed (предсуществ. test_03 CircuitBreaker pollution), 1 skipped. Smoke e2e на llama-3.2-1b (LM Studio 127.0.0.1:1234): benign «What is the capital of France?» → status=ok, verdict=GREEN, output=«Paris.» (раньше блокировался output-guard'ом). Инъекции/role-hijack/multilingual — блокируются на input (Layer 1+2). PII/leak/secret — работают на Layer 4 regex-only.
+
+---
+
 - feat: кодирование тривиальных техник из разведданных (github-copilot-expert, 36 дайджестов 06-16→07-07). 10 задач выполнено, 7 пробников (#40-#46 + icl_reorder):
   - **Т1** Source citations `[src: файл#чанк]` в build_context (memory/2026-06-16). Пробник #40 (5 тестов).
   - **Т2** Immutable raw: type=raw по умолчанию, type=derived для summary (memory/2026-06-28, LLM-rewrite 100%→52.6%). Пробник #41 (4 теста).

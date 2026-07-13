@@ -952,7 +952,16 @@ class PIIMasker:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class OutputFilter:
-    """Layer 4: Post-Processor с отдельным Guard."""
+    """Layer 4: regex-only post-processor (PII-маскинг + leak/secret-паттерны).
+
+    Семантический output-guard (Qwen3Guard на Layer 4) УДАЛЁН. Причины: модель
+    заточена под классификацию ВХОДОВ (injection-detection); на выходах
+    сваливается в чат-режим → parse_error → fail-closed блокирует benign.
+    Для air-gapped локалки модерация собственных ответов не нужна (получатель
+    = сам оператор). Layer 4 теперь regex-only: PII-маскинг, leakage-паттерны
+    (system-prompt/key/secret), secret-scanning (Т4). Если output-guard
+    понадобится — брать модель, специально заточенную под output-moderation,
+    НЕ Qwen3Guard."""
 
     LEAKAGE_PATTERNS = [
         r"(?i)(my|the)\s+system\s+prompt\s+is\s*[:=]",
@@ -962,10 +971,9 @@ class OutputFilter:
         r"(?i)the prompt I was given is",
     ]
 
-    def __init__(self, pii_masker: PIIMasker, output_guard: Optional[GuardClassifier] = None,
+    def __init__(self, pii_masker: PIIMasker,
                  on_redaction: Optional[Callable[[int, int], None]] = None):
         self.pii_masker = pii_masker
-        self.output_guard = output_guard
         # Т8: sink для счётчиков (pii_count, secret_count). Pipeline передаёт
         # замыкание, инкрементящее self.metrics под _metrics_lock.
         self.on_redaction = on_redaction
@@ -975,7 +983,7 @@ class OutputFilter:
         ]
 
     async def filter(self, text: str) -> Tuple[str, bool, Optional[str]]:
-        """Обработать вывод модели."""
+        """Обработать вывод модели: leak-паттерны (блок) + PII/secret-маскинг."""
         for pattern in self.leakage_compiled:
             if pattern.search(text):
                 return "[ДАННЫЕ ЗАБЛОКИРОВАНЫ]", True, f"leakage:{pattern.pattern}"
@@ -987,11 +995,6 @@ class OutputFilter:
             pii_n, secret_n = self.pii_masker.count_redactions(masked_text)
             if pii_n or secret_n:
                 self.on_redaction(pii_n, secret_n)
-
-        if self.output_guard:
-            verdict, confidence, reason = await self.output_guard.classify(masked_text)
-            if verdict == "RED":
-                return "[ОТФИЛЬТРОВАНО]", True, f"toxic:{reason}"
 
         return masked_text, False, None
 
@@ -1006,7 +1009,7 @@ class SecurityPipeline:
     def __init__(
         self,
         guard_client=None,
-        output_guard_client=None,
+        output_guard_client=None,  # устарел: семантический output-guard удалён
         embedder=None,
         chroma_collection=None,
         trust_db_path: Path = Path("data/trust_registry.db"),
@@ -1018,13 +1021,21 @@ class SecurityPipeline:
         self.layer2 = GuardClassifier(guard_client, prompt_template="input")
         self.layer3 = FewShotMatcher(embedder, chroma_collection) if embedder and chroma_collection else None
         self.pii_masker = PIIMasker()
-        output_guard = GuardClassifier(output_guard_client, prompt_template="output") if output_guard_client else None
+        # output_guard_client устарел и игнорируется: семантический output-guard
+        # (Qwen3Guard на Layer 4) удалён — не подходит для output-classification.
+        # Layer 4 теперь regex-only (PII/leak/secret). См. OutputFilter docstring.
+        if output_guard_client is not None:
+            logger.warning(
+                "output_guard_client проигнорирован: семантический output-guard "
+                "удалён (Qwen3Guard не годится для output-classification). "
+                "Layer 4 работает regex-only."
+            )
         # Т8: sink инкрементит metrics под локом.
         def _on_redaction(pii_n: int, secret_n: int) -> None:
             with self._metrics_lock:
                 self.metrics["pii_redactions"] += pii_n
                 self.metrics["secret_redactions"] += secret_n
-        self.layer4 = OutputFilter(self.pii_masker, output_guard, on_redaction=_on_redaction)
+        self.layer4 = OutputFilter(self.pii_masker, on_redaction=_on_redaction)
 
         self.trust = TrustRegistry(trust_db_path)
 
