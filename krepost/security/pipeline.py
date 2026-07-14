@@ -233,7 +233,7 @@ class CircuitBreaker:
             if self.state == "CLOSED":
                 return True
             elif self.state == "OPEN":
-                if time.time() - self.last_failure_time > self.recovery_timeout:
+                if time.time() - self.last_failure_time >= self.recovery_timeout:
                     self.state = "HALF_OPEN"
                     self.failure_count = 0
                     self._half_open_probe_in_flight = True  # этот вызов — probe

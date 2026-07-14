@@ -9,6 +9,12 @@
 
 ---
 
+- fix(BUG-CB-01): CircuitBreaker recovery_timeout=0 — сравнение `>` заменено на `>=` в can_execute(). При timeout=0 переход OPEN→HALF_OPEN требовал строго положительный elapsed; в быстрых тестах (test_03, test_32) can_execute() возвращал False → failure_count не сбрасывался. Не test pollution — race по времени в одном процессе.
+- Коммит: (не закоммичено — ожидает решения оператора)
+- Проверка: .venv/bin/python -m pytest tests/ Probnoki/ -q → 715 passed, 1 skipped, 75 warnings in 3.52s. .venv/bin/python -m pytest Ataker-boop/tests/test_ataker.py -q → 48 passed in 0.10s.
+
+---
+
 - refactor: семантический output-guard (Qwen3Guard на Layer 4) УДАЛЁН. Причины: (1) Qwen3Guard заточен под классификацию ВХОДОВ (injection-detection); на выходах сваливается в чат-режим («I can't help with this request») → parse_error_fail_closed → ложные блокировки benign; (2) для air-gapped локалки модерация собственных ответов не нужна — получатель = сам оператор, защищать оператора от его же модели бессмысленно. Layer 4 теперь regex-only: PII-маскинг + leakage-паттерны + secret-scanning (Т4). Изменения: factory (ollama+openai) — output_guard_client=None; OutputFilter — убран output_guard из __init__ и filter(); SecurityPipeline — output_guard_client устарел, логирует warning при передаче. Пробник #31 переписан: проверяет что guard отключен + PII/leak/secret regex работают. test_29 — response_format json_object→text (LM Studio 0.4+ не принимает json_object). 712 passed.
 - Коммит: (не закоммичено — ожидает решения оператора)
 - Проверка: python -m pytest tests/ Probnoki/ -q → 712 passed, 3 failed (предсуществ. test_03 CircuitBreaker pollution), 1 skipped. Smoke e2e на llama-3.2-1b (LM Studio 127.0.0.1:1234): benign «What is the capital of France?» → status=ok, verdict=GREEN, output=«Paris.» (раньше блокировался output-guard'ом). Инъекции/role-hijack/multilingual — блокируются на input (Layer 1+2). PII/leak/secret — работают на Layer 4 regex-only.
