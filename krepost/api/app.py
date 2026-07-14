@@ -21,9 +21,10 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from krepost.api.alerts import AlertDispatcher, format_prometheus_metrics
 from krepost.orchestration.orchestrator import Orchestrator, OrchestrationResult
 
 try:
@@ -72,7 +73,12 @@ def _to_response(r: OrchestrationResult) -> QueryResponse:
     )
 
 
-def create_app(orchestrator: Orchestrator, *, title: str = "Krepost API") -> FastAPI:
+def create_app(
+    orchestrator: Orchestrator,
+    *,
+    title: str = "Krepost API",
+    alert_dispatcher: AlertDispatcher | None = None,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         yield
@@ -83,6 +89,17 @@ def create_app(orchestrator: Orchestrator, *, title: str = "Krepost API") -> Fas
             logger.error(f"pipeline close on shutdown failed: {e}")
 
     app = FastAPI(title=title, version=API_VERSION, lifespan=lifespan)
+    alerts = alert_dispatcher or AlertDispatcher()
+
+    def _metrics_snapshot() -> Dict[str, Any]:
+        pipe = orchestrator.pipeline
+        with pipe._metrics_lock:
+            snap = dict(pipe.metrics)
+            snap["red_by_layer"] = dict(snap.get("red_by_layer", {}))
+            total = snap.get("total_requests", 0)
+            redactions = snap.get("pii_redactions", 0) + snap.get("secret_redactions", 0)
+            snap["pii_filter_healthy"] = bool(total == 0 or redactions > 0)
+        return snap
 
     @app.middleware("http")
     async def limit_body(request: Request, call_next):
@@ -107,17 +124,15 @@ def create_app(orchestrator: Orchestrator, *, title: str = "Krepost API") -> Fas
 
     @app.get("/metrics")
     async def metrics():
-        pipe = orchestrator.pipeline
-        with pipe._metrics_lock:
-            snap = dict(pipe.metrics)
-            snap["red_by_layer"] = dict(snap.get("red_by_layer", {}))
-            # Т8: канарейка — PII-фильтр здоров, если были замены при трафике.
-            # False при total>0 и redactions==0 = возможный fail-open. Реальный
-            # alerting-infra (Prometheus/webhook) — отдельная задача ROADMAP.
-            total = snap.get("total_requests", 0)
-            redactions = snap.get("pii_redactions", 0) + snap.get("secret_redactions", 0)
-            snap["pii_filter_healthy"] = bool(total == 0 or redactions > 0)
+        snap = _metrics_snapshot()
+        alerts.maybe_alert_pii_unhealthy(snap)
         return snap
+
+    @app.get("/metrics/prometheus")
+    async def metrics_prometheus():
+        snap = _metrics_snapshot()
+        alerts.maybe_alert_pii_unhealthy(snap)
+        return PlainTextResponse(format_prometheus_metrics(snap))
 
     @app.post("/v1/query", response_model=QueryResponse)
     async def query(req: QueryRequest):

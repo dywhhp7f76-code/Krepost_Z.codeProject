@@ -483,3 +483,52 @@ class TestRedTeamLoop:
         assert report.block_rate == 0.0
         assert report.bypassed == report.total_attacks
         assert len(report.weaknesses) == report.total_attacks
+
+
+class FlakyPipeline:
+    """Mock pipeline с контролируемым разбросом вердиктов по счётчику вызовов."""
+
+    def __init__(self, pattern: list[str]):
+        self._pattern = pattern
+        self._call_count = 0
+
+    async def process(self, text: str, session_id: str) -> MockSecurityContext:
+        verdict = self._pattern[self._call_count % len(self._pattern)]
+        self._call_count += 1
+        return MockSecurityContext(verdict=verdict, layer="Layer2-Guard", confidence=0.9)
+
+
+class TestRedTeamJudgeSamples:
+
+    async def test_judge_samples_majority_vote(self):
+        pipeline = FlakyPipeline(["RED", "GREEN", "GREEN"])
+        loop = RedTeamLoop(pipeline=pipeline, judge_samples=3, seed=42)
+        result = await loop.run_single("test payload")
+        assert result.judge_verdicts == ["RED", "GREEN", "GREEN"]
+        assert result.actual_verdict == "GREEN"
+        assert result.bypassed is True
+
+    async def test_judge_instability_quarantine(self):
+        pipeline = FlakyPipeline(["RED", "YELLOW", "GREEN"])
+        loop = RedTeamLoop(
+            pipeline=pipeline,
+            judge_samples=3,
+            instability_threshold=0.34,
+            seed=42,
+        )
+        report = await loop.run(
+            categories=[AttackCategory.DIRECT_INJECTION],
+            mutations_per_template=0,
+            include_chained=False,
+            max_attacks=1,
+        )
+        assert report.quarantined_count >= 1
+        assert report.judge_instability_rate > 0
+        assert any(w.get("type") == "judge_instability" for w in report.weaknesses)
+
+    async def test_judge_samples_one_no_vote(self):
+        pipeline = MockPipeline(block_rate=1.0)
+        loop = RedTeamLoop(pipeline=pipeline, judge_samples=1, seed=42)
+        result = await loop.run_single("blocked")
+        assert result.judge_verdicts == []
+        assert result.judge_instability_rate == 0.0

@@ -606,9 +606,9 @@
 
 ### Extended (зависимости, на будущее)
 
-- **T9-extended** — majority vote N≥3 + judge_instability_rate в success-analyzer. ⏳ средняя. Зависимость: поверх temp=0 (сделано). Трогает RedTeamLoop + RedTeamReport.
-- **T11-full** — полный корпус 60 категорий Red Team AI Benchmark v2.0. ⏳. Зависимость: легальный источник полного корпуса.
-- **Т8 alerting-infra** — реальный alerting (Prometheus/webhook) при pii_filter_healthy=False. ⏳. Канарейка-флаг в `/metrics` уже есть.
+- **T9-extended** — majority vote N≥3 + judge_instability_rate — ✅ сделано. `success_analyzer.py` + `RedTeamLoop(judge_samples=3)` + пробник #47.
+- **T11-full** — scaffold 60 категорий — ✅ сделано. `benchmark_catalog.py` + `seed_attacks.example.jsonl` (60 placeholders) + coverage API + пробник #49. Реальные payloads → `seed_attacks.local.jsonl` (gitignored).
+- **Т8 alerting-infra** — webhook + Prometheus — ✅ сделано. `AlertDispatcher` (`KREPOST_ALERT_WEBHOOK`), `/metrics/prometheus`, debounce + пробник #48.
 
 ---
 

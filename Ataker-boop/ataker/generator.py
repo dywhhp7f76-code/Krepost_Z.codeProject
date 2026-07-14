@@ -352,6 +352,21 @@ class AttackGenerator:
                     mutated=text,
                     mutations_applied=[],
                     expected_layer=self._expected_layer(category),
-                    metadata={"source": "seed_corpus"},
+                    metadata={
+                        "source": "seed_corpus",
+                        "benchmark_id": obj.get("benchmark_id"),
+                    },
                 ))
         return payloads
+
+    def benchmark_coverage_from_seed(self, path: str | Path | None = None) -> Dict[str, object]:
+        """T11-full: coverage matrix по 60 категориям бенчмарка."""
+        from ataker.benchmark_catalog import compute_benchmark_coverage
+
+        payloads = self.load_seed_corpus(path)
+        covered = [
+            p.metadata.get("benchmark_id")
+            for p in payloads
+            if p.metadata.get("benchmark_id")
+        ]
+        return compute_benchmark_coverage(covered)

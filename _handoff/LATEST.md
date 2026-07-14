@@ -9,9 +9,14 @@
 
 ---
 
-- fix(BUG-CB-01): CircuitBreaker recovery_timeout=0 — сравнение `>` заменено на `>=` в can_execute(). При timeout=0 переход OPEN→HALF_OPEN требовал строго положительный elapsed; в быстрых тестах (test_03, test_32) can_execute() возвращал False → failure_count не сбрасывался. Не test pollution — race по времени в одном процессе.
+- feat(extended): T9-extended + T8 alerting + T11-full scaffold. T9: `success_analyzer.py` (majority vote, judge_instability_rate, quarantine), `RedTeamLoop(judge_samples≥3)`, пробник #47. T8: `krepost/api/alerts.py` (KREPOST_ALERT_WEBHOOK, debounce), `/metrics/prometheus`, пробник #48. T11-full: `benchmark_catalog.py` (60 категорий A–G), `seed_attacks.example.jsonl` (60 placeholders), `benchmark_coverage_from_seed()`, пробник #49. ROADMAP Extended → ✅.
 - Коммит: (не закоммичено — ожидает решения оператора)
-- Проверка: .venv/bin/python -m pytest tests/ Probnoki/ -q → 715 passed, 1 skipped, 75 warnings in 3.52s. .venv/bin/python -m pytest Ataker-boop/tests/test_ataker.py -q → 48 passed in 0.10s.
+- Проверка: .venv/bin/python -m pytest tests/ Probnoki/ -q → 741 passed, 1 skipped. PYTHONPATH=. pytest Ataker-boop/tests/test_ataker.py -q → 51 passed.
+
+---
+
+- fix(BUG-CB-01): CircuitBreaker recovery_timeout=0 — сравнение `>` заменено на `>=` в can_execute(). При timeout=0 переход OPEN→HALF_OPEN требовал строго положительный elapsed; в быстрых тестах (test_03, test_32) can_execute() возвращал False → failure_count не сбрасывался. Не test pollution — race по времени в одном процессе.
+- Коммит: 4bf2b7a fix(BUG-CB-01): CircuitBreaker recovery_timeout=0 uses >= not >
 
 ---
 
