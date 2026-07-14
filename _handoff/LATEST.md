@@ -10,7 +10,7 @@
 ---
 
 - feat(extended): T9-extended + T8 alerting + T11-full scaffold. T9: `success_analyzer.py` (majority vote, judge_instability_rate, quarantine), `RedTeamLoop(judge_samples≥3)`, пробник #47. T8: `krepost/api/alerts.py` (KREPOST_ALERT_WEBHOOK, debounce), `/metrics/prometheus`, пробник #48. T11-full: `benchmark_catalog.py` (60 категорий A–G), `seed_attacks.example.jsonl` (60 placeholders), `benchmark_coverage_from_seed()`, пробник #49. ROADMAP Extended → ✅.
-- Коммит: (не закоммичено — ожидает решения оператора)
+- Коммит: 41545f6 feat(extended): T9 judge vote, T8 alerting, T11 benchmark scaffold
 - Проверка: .venv/bin/python -m pytest tests/ Probnoki/ -q → 741 passed, 1 skipped. PYTHONPATH=. pytest Ataker-boop/tests/test_ataker.py -q → 51 passed.
 
 ---
