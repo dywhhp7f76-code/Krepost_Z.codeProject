@@ -1,79 +1,68 @@
 --- 
 tags: [крепость, роадмэп, архитектура, мониторинг]
-date: 2026-06-19
-version: 2.1
+date: 2026-07-15
+version: 2.2
 status: active
-replaces: roadmap-v2.0
+replaces: roadmap-v2.1
 hardware:
   mac_studio: M4 Max 64GB 1TB
   macbook_air: M5 32GB 1TB
-  fast_ssd: WD SN850X 2TB TB5 (80Gbps)
-  archive_hdd: 6TB
-  ipad: Air M4 256GB
-  iphone: Air 256GB
+  fast_ssd: WD SN850X 2TB TB5 enclosure (80Gbps)
+  archive_hdd: 4TB accelerated
+  dock: UGREEN Revodok Max TB5 13-in-1
+  tb_cables: 6x TB4 40Gbps
+  status: delivered 2026-07-15
 models:
-  main: Qwen3.6-27B (Q4_K_M)
+  main: Qwen3.6-35B-A3B (MoE, Q4)
   guard: Qwen3Guard-Gen-4B
-  attacker: Mistral-7B-instruct
-  embedder: BGE-M3
+  attacker: uncensored local (candidate dolphin3-cyber-8b)
+  embedder: BGE-M3 / nomic-embed-text-v1.5
   reader: OCC-RAG-1.7B (planned)
   image_gen: FLUX.1 [schnell] + [dev]
-next_review: 2026-07-01
+next_review: 2026-08-01
 ---
 
-# 🗺️ КРЕПОСТЬ — РОАДМЭП v2.1
+# 🗺️ КРЕПОСТЬ — РОАДМЭП v2.2
 
 ## Архитектура (зафиксирована)
-- ОСНОВНОЙ ИИ (Mac Studio 64ГБ) — носитель конституции, говорит с тобой, берёт чистое из RAG.
-- ЗАЩИТА — отдельная маленькая модель (Studio): Охранник + Карантин + проверка.
-- АТАКУЮЩИЙ (MacBook Air 32ГБ, грязная зона) — спарринг для adversarial-тренировки защиты.
+- ОСНОВНОЙ ИИ (Mac Studio M4 Max 64ГБ) — Qwen3.6-35B-A3B, конституция, RAG.
+- ЗАЩИТА — Qwen3Guard-Gen-4B на Studio (и smoke на Air).
+- АТАКУЮЩИЙ (MacBook Air M5 32ГБ, грязная зона) — uncensored LLM для Ataker-boop.
 - ОБЛАКО — недоверенный помощник, ответ через Карантин (quarantine:true).
 - СОВЕТ — по кнопке, не на каждый запрос. «Учитель» удалён.
 - Threat model A (наружу не смотрит).
 
----
+## Железо (2026-07-15 — приехало)
 
-## ФАЗА 0 — СЕЙЧАС (без Mac, можно делать)
+| Компонент | Спека |
+|-----------|-------|
+| Mac Studio | M4 Max, 64 GB, 1 TB |
+| MacBook Air | M5, 32 GB, 1 TB |
+| SN850X | 2 TB, TB5 корпус ~80 Gbps |
+| HDD | 4 TB, ускоренный |
+| Док | UGREEN Revodok Max TB5 13-in-1 |
+| Кабели | 6× TB 40 Gbps |
 
-### 0.1 Выбор основной модели ⬅ старт
-Кандидаты (НЕ финал): Qwen3.6-27B dense (Apache 2.0) основной / Qwen3-Guard 4B защита.
-Критерии: открытая лицензия (дообучение!), слабая лишняя фильтрация, русский, ≤64ГБ.
-Требует свежего поиска. Разблокирует всю математику обучения.
-
-### 0.2 Системный промпт основного ИИ
-Из «Конституции характера». Минимализм — регулируемым параметром, не константой.
-Заменить в конституции «зеркала» → «буфер+карантин».
-
-### 0.3 Защитный промпт
-По НАМЕРЕНИЮ, не теме: блокировать инструкции/призыв к действию (детское — строго;
-инструкции вреда), но НЕ резать новости/аналитику на острые темы.
-
-### 0.4 security.py v1.1 (исправление багов)
-9 багов зафиксированы (см. раздел «security.py — баги к фиксу»).
-Порядок: 4 (дыра) → 1,3 → 2,6 → 7,8,9 → 5 (на Mac).
-
-### 0.5 Структура датасета для обучения защиты
-Формат human_verdict → изолированная база. JSONL-схема, разметка GREEN/YELLOW/RED.
-Привязано к коду, не к модели — можно сейчас.
-
-### 0.6 OCC-RAG Reader integration
-Patch v1.1 готов. Компактный reader (0.6B/1.7B) для RAG.
-Экономит 17GB RAM vs Qwen3.6-27B. Context-faithful by design.
-Требует: retriever_protocol.py (адаптеры ChromaDB/FAISS).
-
-### 0.7 SMART_CACHE v2.1
-Трёхслойный кэш (L1 exact/L2 semantic/L3 full).
-Уже реализован в src/krepost/cache/.
-Требует: интеграция с Security Layer (кэшировать только GREEN).
-
-### 0.8 Source Citations
-Кликабельные ссылки на источники в ответах.
-Критично для доверия к RAG.
-Интеграция с Obsidian (obsidian://open?vault=...).
+Подробнее: [01-04-HARDWARE.md](architecture/01-04-HARDWARE.md)
 
 ---
 
-## ФАЗА 1 — ПРИХОД Mac (сборка)
+## ФАЗА 0 — ЗАКРЫТА (код без Mac)
+
+Большая часть Фазы 0 выполнена в коде (pipeline v2.2, Т1–Т12, Extended). Железо ждали — **теперь на месте**.
+
+---
+
+## ФАЗА 1 — СБОРКА (СЕЙЧАС) ⬅
+
+### 1.0 День-1 на Studio
+- `ollama pull` или LM Studio: `qwen3.6-35b-a3b`, `qwen3guard-gen-4b`
+- Smoke e2e через `build_openai_orchestrator` / `build_ollama_orchestrator`
+- Замер latency main + guard; guard timeout ≥120s на Air CPU
+
+### 1.0b Air — атакующий
+- Выбрать финальный uncensored attacker (канд. `dolphin3-cyber-8b`)
+- SN850X: seed-корпус, adversarial JSONL, физическая изоляция
 
 ### 1.1 main.py — соединить 9 модулей
 Пайплайн: User → Охранник → Карантин → [Router+RAG+LLM] → Пост-процессор → User.
@@ -89,8 +78,11 @@ Patch v1.1 готов. Компактный reader (0.6B/1.7B) для RAG.
 config.py, models.py, __init__.py, .env.example, requirements.txt, backup.sh.
 backup.sh: рабочее (SN580) и бэкап (HDD) — РАЗНЫЕ диски.
 
-### 1.5 Железо-доделки
-SATA-бокс/док для 3.5" HDD (питание 12В) — проверить, тянет ли имеющаяся док-станция.
+### 1.5 Периферия и диски
+- UGREEN Revodok Max TB5 — док подключён, 6× TB4 40Gbps
+- SN850X 2TB на TB5 — adversarial / train data
+- HDD 4TB — archive + backup (разные диски от рабочего SSD!)
+- Мышь ⏳ в пути
 
 ### 1.6 KVEraser integration
 Обучаемое удаление harmful spans из KV-cache.

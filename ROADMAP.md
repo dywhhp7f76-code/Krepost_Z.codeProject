@@ -14,6 +14,47 @@
 
 ---
 
+## 🖥 Железо — зафиксировано (2026-07-15, всё на месте)
+
+> **Статус:** Mac Studio + MacBook Air **приехали**. Фаза «ждём железо» закрыта.
+> Дальше — сборка, `ollama pull`, замеры latency, разводка дисков.
+
+### Вычислительные узлы
+
+| Узел | Спека | Роль |
+|------|-------|------|
+| **Mac Studio** | M4 **Max**, 64 GB RAM, 1 TB SSD | Боевой: main LLM + Guard + RAG + эмбеддинги |
+| **MacBook Air** | M5, 32 GB RAM, 1 TB SSD | Грязная зона: Ataker-boop, adversarial, LM Studio smoke |
+
+### Хранилище и периферия
+
+| Компонент | Спека | Роль |
+|-----------|-------|------|
+| **WD Black SN850X** | 2 TB, корпус **TB5 ~80 Gbps** | Быстрый съёмный SSD: тренировочные данные, adversarial-корпус, яды (Камень 1) |
+| **HDD** | **4 TB**, ускоренный (кэш/док) | Архив: бэкапы, audit-логи, cold storage |
+| **UGREEN Revodok Max** | Thunderbolt **5**, 13-in-1, до 120/80 Gbps | Док-станция: питание, мониторы, порты, TB downstream |
+| **Кабели** | 6× Thunderbolt **40 Gbps** | Связка Mac ↔ док ↔ SSD/HDD/периферия |
+| **Прочее** | мелочёвка (клавы, адаптеры…) | — |
+| **Мышь** | ⏳ в пути (потеряли/украли старую) | — |
+
+### Модели (оператор + smoke 2026-07-14)
+
+| Роль | Модель | Узел | Статус |
+|------|--------|------|--------|
+| **Main** | **Qwen3.6-35B-A3B** (MoE, Q4) | Mac Studio | ✅ выбор оператора; умнее dense 27B на Studio |
+| **Guard** | Qwen3Guard-Gen-4B (Q4_K_S) | Mac Studio (+ Air smoke) | ✅ smoke GREEN/RED на LM Studio |
+| **Attacker** | **uncensored local** (канд. `dolphin3-cyber-8b`) | MacBook Air | ⏳ финальный выбор — без alignment, только red-team |
+| **Embedder** | nomic-embed-text v1.5 / BGE-M3 | Mac Studio | 🔜 pull + RAG |
+| **Reader** | OCC-RAG-1.7B | Mac Studio | ⏳ planned |
+| **Draft/smoke** | llama-3.2-1b-instruct, qwen2.5-0.5b-mlx | Air (LM Studio) | ✅ smoke ok |
+
+**Заметки:**
+- LM Studio на Air: `http://127.0.0.1:1234/v1`; guard id = `qwen3guard-gen-4b` (дефис, не `:` как в Ollama).
+- Guard timeout на CPU Air: **120 s** (дефолт 5 s → circuit breaker).
+- На Studio main — **35b-a3b**, не 27b dense (ROADMAP-v2.1 устарел, см. ниже).
+
+---
+
 ## Как читать «сейчас vs потом» для облачных угроз
 
 Крепость встречается с сетью в двух ролях — угрозы у них разные:
@@ -30,15 +71,14 @@
 
 ## 🏗 foundation
 
-### Стек инференса: Ollama (готов) → vLLM/MLX (при железе)  🔜
+### Стек инференса: Ollama (готов) → vLLM/MLX (на железе)  🔜
 - **✅ Код готов (2026-07-02):** `OllamaBackend` (ModelBackend + ToolCallingBackend)
   + фабрика `build_ollama_orchestrator/agent` в `krepost/orchestration/`. Один
   ollama-клиент обслуживает guard (Qwen3Guard) и main (Qwen3.x). Тесты на фейк-
   клиенте (Probnoki #27). README — «день-1 на Mac».
-- **⏳ Осталось при железе:** `ollama pull` реальных моделей; замер latency;
-  опц. vLLM MRv2 (квантованные веса, KV-offload) и MLX speculative decoding как
-  альтернативные бэкенды (сиблинги OllamaBackend); LocalAI distributed для P2P
-  между Mac Studio и MacBook Air.
+- **✅ Железо (2026-07-15):** Mac Studio M4 Max 64 GB + MacBook Air M5 32 GB на месте.
+- **⏳ Следующий шаг:** `ollama pull` / LM Studio на Studio (`qwen3.6-35b-a3b`,
+  `qwen3guard-gen-4b`); замер latency; vLLM MRv2 + KV-offload; LocalAI P2P Studio↔Air.
 - **Откуда:** foundation/2026-07-02 (релизы vLLM 0.22–0.24, LocalAI 4.5.x, Ollama 0.30–0.31).
 - **К чему относится:** foundation — слой инференса.
 
