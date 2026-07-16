@@ -24,9 +24,28 @@ from krepost.orchestration.router import Route, Router
 from krepost.orchestration.tools import Tool, ToolAgent, ToolRegistry
 from krepost.security.pipeline import SecurityPipeline
 
+try:
+    from krepost.memory.chroma_factory import (
+        DEFAULT_CHROMA_DIR,
+        DEFAULT_FEWSHOT_COLLECTION,
+        DEFAULT_MEMORY_COLLECTION,
+        make_chroma_client,
+        make_fewshot_collection,
+        make_memory_stack,
+    )
+    from krepost.memory.store import MemoryStore
+except ImportError:  # pragma: no cover
+    make_memory_stack = None  # type: ignore[misc, assignment]
+    MemoryStore = Any  # type: ignore[misc, assignment]
+
 DEFAULT_HOST = "http://127.0.0.1:11434"
 DEFAULT_MAIN_MODEL = "qwen3.6:27b"
 DEFAULT_TRUST_DB = Path("data/trust_registry.db")
+
+# Имя guard-модели зависит от транспорта:
+# - Ollama: "qwen3guard-gen:4b" (дефолт в GuardClassifier);
+# - LM Studio / OpenAI-совместимый: "qwen3guard-gen-4b" (дефис, как в LM Studio).
+DEFAULT_OPENAI_GUARD_MODEL = "qwen3guard-gen-4b"
 
 
 def _resolve_openai_api_key(explicit: Optional[str]) -> str:
@@ -122,9 +141,13 @@ def build_openai_pipeline(
     chroma_collection: Any = None,
     enable_cache: bool = False,
     transport: Any = None,
+    guard_model: str = DEFAULT_OPENAI_GUARD_MODEL,
 ) -> tuple[SecurityPipeline, Any]:
     """(pipeline, transport). guard_client — OpenAIGuardClient на том же
-    transport, что и main-бэкенд (один сервер, разные имена моделей)."""
+    transport, что и main-бэкенд (один сервер, разные имена моделей).
+
+    guard_model — имя guard-модели на OpenAI-совместимом сервере
+    (LM Studio отдаёт её как "qwen3guard-gen-4b")."""
     api_key = _resolve_openai_api_key(api_key)
     guard = OpenAIGuardClient(base_url=base_url, api_key=api_key, transport=transport)
     pipeline = SecurityPipeline(
@@ -139,6 +162,7 @@ def build_openai_pipeline(
         chroma_collection=chroma_collection,
         trust_db_path=trust_db_path,
         enable_cache=enable_cache,
+        guard_model_name=guard_model,
     )
     return pipeline, guard._transport
 
@@ -154,16 +178,42 @@ def build_openai_orchestrator(
     chroma_collection: Any = None,
     transport: Any = None,
     options: Optional[dict] = None,
+    guard_model: str = DEFAULT_OPENAI_GUARD_MODEL,
+    memory_store: Optional[Any] = None,
+    vault_name: str = "Krepost",
 ) -> Orchestrator:
     api_key = _resolve_openai_api_key(api_key)
     pipeline, transport = build_openai_pipeline(
         base_url=base_url, api_key=api_key, trust_db_path=trust_db_path,
         embedder=embedder, chroma_collection=chroma_collection, transport=transport,
+        guard_model=guard_model,
     )
     backend = OpenAIBackend(main_model, base_url=base_url, api_key=api_key,
                             transport=transport, options=options)
     router = Router(list(routes or []), default=Route("main", backend))
-    return Orchestrator(pipeline, router)
+    return Orchestrator(pipeline, router, memory_store=memory_store, vault_name=vault_name)
+
+
+def build_openai_orchestrator_with_memory(
+    main_model: str,
+    *,
+    chroma_dir: Path = DEFAULT_CHROMA_DIR,
+    memory_collection: str = DEFAULT_MEMORY_COLLECTION,
+    fewshot_collection: str = DEFAULT_FEWSHOT_COLLECTION,
+    **kwargs: Any,
+) -> Orchestrator:
+    """Боевой стек: BGE-M3 + persistent Chroma (memory + fewshot) + MemoryStore."""
+    if make_memory_stack is None:
+        raise RuntimeError("memory stack unavailable — install sentence-transformers + chromadb")
+    embedder, mem_col, memory_store = make_memory_stack(
+        chroma_dir=chroma_dir, collection_name=memory_collection,
+    )
+    client = make_chroma_client(chroma_dir)
+    fewshot_col = make_fewshot_collection(client, fewshot_collection)
+    kwargs.setdefault("embedder", embedder)
+    kwargs.setdefault("chroma_collection", fewshot_col)
+    kwargs.setdefault("memory_store", memory_store)
+    return build_openai_orchestrator(main_model, **kwargs)
 
 
 def build_openai_agent(
@@ -178,11 +228,13 @@ def build_openai_agent(
     transport: Any = None,
     options: Optional[dict] = None,
     max_iters: int = 6,
+    guard_model: str = DEFAULT_OPENAI_GUARD_MODEL,
 ) -> ToolAgent:
     api_key = _resolve_openai_api_key(api_key)
     pipeline, transport = build_openai_pipeline(
         base_url=base_url, api_key=api_key, trust_db_path=trust_db_path,
         embedder=embedder, chroma_collection=chroma_collection, transport=transport,
+        guard_model=guard_model,
     )
     backend = OpenAIBackend(main_model, base_url=base_url, api_key=api_key,
                             transport=transport, options=options)

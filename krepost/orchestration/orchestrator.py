@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
+from krepost.prompts.assistant import build_rag_messages
 from krepost.security.pipeline import SecurityContext, Verdict
 
 if TYPE_CHECKING:
+    from krepost.memory.store import MemoryStore
     from krepost.orchestration.router import Router
     from krepost.security.pipeline import SecurityPipeline
 
@@ -73,11 +75,15 @@ class Orchestrator:
         router: "Router",
         blocked_message: str = DEFAULT_BLOCKED_MESSAGE,
         error_message: str = DEFAULT_ERROR_MESSAGE,
+        memory_store: Optional["MemoryStore"] = None,
+        vault_name: str = "Krepost",
     ):
         self.pipeline = pipeline
         self.router = router
         self.blocked_message = blocked_message
         self.error_message = error_message
+        self.memory_store = memory_store
+        self.vault_name = vault_name
 
     async def handle(self, text: str, session_id: str) -> OrchestrationResult:
         start = time.perf_counter()
@@ -103,9 +109,38 @@ class Orchestrator:
         # ── Маршрутизация ───────────────────────────────────────────────
         route = self.router.select(in_ctx)
 
+        # ── RAG (опционально): retrieve → build_rag_messages ────────────
+        rag_messages: Optional[List[Dict[str, str]]] = None
+        rag_meta: Dict[str, Any] = {}
+        if self.memory_store is not None:
+            try:
+                retrieval = await self.memory_store.retrieve(text)
+                rag_meta = {
+                    "rag_chunks": len(retrieval.chunks),
+                    "rag_top_score": retrieval.top_score,
+                    "rag_confident": retrieval.confident,
+                }
+                if not retrieval.empty:
+                    blocks = [
+                        {
+                            "text": c.text,
+                            "source": self.memory_store._source_label(c.metadata, c.doc_id),
+                        }
+                        for c in retrieval.chunks
+                    ]
+                    rag_messages = build_rag_messages(
+                        text, blocks, vault_name=self.vault_name,
+                    )
+            except Exception as e:
+                logger.warning(f"memory retrieve failed: {type(e).__name__}: {e}")
+                rag_meta["rag_error"] = type(e).__name__
+
         # ── Генерация: исходный текст, не нормализованный ───────────────
         try:
-            raw_output = await route.backend.generate(text, in_ctx)
+            gen_kwargs: Dict[str, Any] = {}
+            if rag_messages is not None:
+                gen_kwargs["messages"] = rag_messages
+            raw_output = await route.backend.generate(text, in_ctx, **gen_kwargs)
         except Exception as e:
             # Инфраструктурный сбой бэкенда — мягкая деградация, не атака.
             logger.error(f"backend {route.name!r} generate failed: {type(e).__name__}: {e}")
@@ -118,7 +153,7 @@ class Orchestrator:
                 input_audit_hash=in_ctx.audit_hash,
                 input_trace_hash=in_ctx.trace_hash,
                 latency_ms=(time.perf_counter() - start) * 1000,
-                metadata={"error": type(e).__name__},
+                metadata={"error": type(e).__name__, **rag_meta},
             )
 
         # ── Выход: Layer 4 (свежий контекст, как ожидает process_output) ─
@@ -138,5 +173,5 @@ class Orchestrator:
             violation_layer=out_ctx.violation_layer if blocked_out else None,
             attack_vector=out_ctx.attack_vector if blocked_out else None,
             latency_ms=(time.perf_counter() - start) * 1000,
-            metadata={"trusted": in_ctx.metadata.get("trusted", False)},
+            metadata={"trusted": in_ctx.metadata.get("trusted", False), **rag_meta},
         )

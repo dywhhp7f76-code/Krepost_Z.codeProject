@@ -24,7 +24,7 @@ from krepost.orchestration.openai_backend import (OpenAIBackend,
                                                   _to_openai_tools)
 from krepost.orchestration.tools import FinalAnswer, Tool, ToolCall
 
-GUARD_MODEL = "qwen3guard-gen:4b"
+GUARD_MODEL = "qwen3guard-gen-4b"
 MAIN_MODEL = "local-model"
 
 

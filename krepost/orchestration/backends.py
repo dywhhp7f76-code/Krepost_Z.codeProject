@@ -65,7 +65,7 @@ class CallableBackend:
             getattr(fn, "__call__", None)
         )
 
-    async def generate(self, prompt: str, ctx: "SecurityContext") -> str:
+    async def generate(self, prompt: str, ctx: "SecurityContext", **kwargs: Any) -> str:
         if self._is_async:
             result = await self._fn(prompt, ctx)  # type: ignore[misc]
         else:
@@ -87,7 +87,7 @@ class EchoBackend:
         self.name = name
         self._reply = reply
 
-    async def generate(self, prompt: str, ctx: "SecurityContext") -> str:
+    async def generate(self, prompt: str, ctx: "SecurityContext", **kwargs: Any) -> str:
         if self._reply is not None:
             return str(self._reply)
         return f"[{self.name}] {prompt}"

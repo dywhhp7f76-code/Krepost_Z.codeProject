@@ -200,7 +200,7 @@ class TestFewShotMatcher:
         embedder = MagicMock()
 
         async def slow_encode(text):
-            await asyncio.sleep(10)
+            await asyncio.sleep(20)
             return [0.1, 0.2, 0.3]
 
         embedder.encode = slow_encode

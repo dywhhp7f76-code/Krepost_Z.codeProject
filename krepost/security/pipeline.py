@@ -746,18 +746,18 @@ class FewShotMatcher:
                 if asyncio.iscoroutinefunction(self.embedder.encode):
                     embedding = await asyncio.wait_for(
                         self.embedder.encode(text),
-                        timeout=2.0
+                        timeout=15.0
                     )
                 else:
                     embedding = await asyncio.wait_for(
                         asyncio.to_thread(self.embedder.encode, text),
-                        timeout=2.0
+                        timeout=15.0
                     )
                 self._cache_embedding(text, embedding)
 
             results = await asyncio.wait_for(
                 asyncio.to_thread(self.collection.query, query_embeddings=[embedding], n_results=5),
-                timeout=2.0
+                timeout=15.0
             )
 
             if not results or not results.get("distances"):
@@ -1016,9 +1016,16 @@ class SecurityPipeline:
         rate_limit: int = DEFAULT_RATE_LIMIT,
         cache_dir: Path = Path("data/cache"),
         enable_cache: bool = False,
+        guard_model_name: Optional[str] = None,
     ):
         self.layer1 = RegexFilter()
-        self.layer2 = GuardClassifier(guard_client, prompt_template="input")
+        # guard_model_name задаёт имя guard-модели под конкретный транспорт:
+        # Ollama — "qwen3guard-gen:4b" (дефолт GuardClassifier), LM Studio —
+        # "qwen3guard-gen-4b" (дефис). None → дефолт GuardClassifier.
+        _guard_kwargs = {"prompt_template": "input"}
+        if guard_model_name is not None:
+            _guard_kwargs["model_name"] = guard_model_name
+        self.layer2 = GuardClassifier(guard_client, **_guard_kwargs)
         self.layer3 = FewShotMatcher(embedder, chroma_collection) if embedder and chroma_collection else None
         self.pii_masker = PIIMasker()
         # output_guard_client устарел и игнорируется: семантический output-guard

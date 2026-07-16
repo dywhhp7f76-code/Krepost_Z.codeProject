@@ -9,7 +9,11 @@
 
 ---
 
-- feat(extended): T9-extended + T8 alerting + T11-full scaffold. T9: `success_analyzer.py` (majority vote, judge_instability_rate, quarantine), `RedTeamLoop(judge_samples≥3)`, пробник #47. T8: `krepost/api/alerts.py` (KREPOST_ALERT_WEBHOOK, debounce), `/metrics/prometheus`, пробник #48. T11-full: `benchmark_catalog.py` (60 категорий A–G), `seed_attacks.example.jsonl` (60 placeholders), `benchmark_coverage_from_seed()`, пробник #49. ROADMAP Extended → ✅.
+- feat(A1+A2+C): vault bootstrap (48 leaves + 00-INDEX + RAG_SMOKE_TEST), RAG wiring (BGE-M3 + persistent Chroma cosine + MemoryStore in orchestrator + ingest_vault.py + serve_lmstudio with memory), FewShot embed timeout 15s, proposals 05/08 approved, EpisodicMemory port → krepost/memory/episodic.py.
+- Коммит: (не закоммичено — по указанию оператора)
+- Проверка: .venv/bin/python scripts/bootstrap_vault.py → vault ready: 48 leaves; .venv/bin/python -m pytest tests/ Probnoki/ -q → 744 passed, 1 skipped (после фикса test_29 guard_model + test_fewshot timeout).
+
+--- T9: `success_analyzer.py` (majority vote, judge_instability_rate, quarantine), `RedTeamLoop(judge_samples≥3)`, пробник #47. T8: `krepost/api/alerts.py` (KREPOST_ALERT_WEBHOOK, debounce), `/metrics/prometheus`, пробник #48. T11-full: `benchmark_catalog.py` (60 категорий A–G), `seed_attacks.example.jsonl` (60 placeholders), `benchmark_coverage_from_seed()`, пробник #49. ROADMAP Extended → ✅.
 - Коммит: 41545f6 feat(extended): T9 judge vote, T8 alerting, T11 benchmark scaffold
 - Проверка: .venv/bin/python -m pytest tests/ Probnoki/ -q → 741 passed, 1 skipped. PYTHONPATH=. pytest Ataker-boop/tests/test_ataker.py -q → 51 passed.
 

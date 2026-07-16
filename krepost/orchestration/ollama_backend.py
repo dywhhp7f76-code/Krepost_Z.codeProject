@@ -112,8 +112,12 @@ class OllamaBackend:
         return await asyncio.to_thread(lambda: client.chat(**kwargs))
 
     # ── ModelBackend ────────────────────────────────────────────────────
-    async def generate(self, prompt: str, ctx: Any) -> str:
-        resp = await self._chat([{"role": "user", "content": prompt}])
+    async def generate(self, prompt: str, ctx: Any, **kwargs: Any) -> str:
+        messages = kwargs.get("messages")
+        if messages:
+            resp = await self._chat(messages)
+        else:
+            resp = await self._chat([{"role": "user", "content": prompt}])
         return _normalize_message(resp)["content"]
 
     # ── ToolCallingBackend ──────────────────────────────────────────────

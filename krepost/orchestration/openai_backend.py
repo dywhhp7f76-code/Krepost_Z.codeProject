@@ -142,8 +142,12 @@ class OpenAIBackend:
             return await self._transport(payload)
         return await asyncio.to_thread(self._transport, payload)
 
-    async def generate(self, prompt: str, ctx: Any) -> str:
-        resp = await self._chat([{"role": "user", "content": prompt}])
+    async def generate(self, prompt: str, ctx: Any, **kwargs: Any) -> str:
+        messages = kwargs.get("messages")
+        if messages:
+            resp = await self._chat(messages)
+        else:
+            resp = await self._chat([{"role": "user", "content": prompt}])
         return _content(resp)
 
     async def step(self, messages: List[Dict[str, Any]],
