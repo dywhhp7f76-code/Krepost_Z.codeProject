@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from krepost.api.alerts import AlertDispatcher, format_prometheus_metrics
 from krepost.orchestration.orchestrator import Orchestrator, OrchestrationResult
+from krepost.orchestration.tools import AgentResult, ToolAgent
 
 try:
     from loguru import logger
@@ -55,6 +56,16 @@ class QueryResponse(BaseModel):
     diagnostics: Dict[str, Any] = Field(default_factory=dict)
 
 
+class AgentResponse(BaseModel):
+    status: str
+    verdict: str
+    output: str
+    session_id: str
+    iterations: int = 0
+    audit_hash: Optional[str] = None
+    diagnostics: Dict[str, Any] = Field(default_factory=dict)
+
+
 def _to_response(r: OrchestrationResult) -> QueryResponse:
     return QueryResponse(
         status=r.status,
@@ -73,9 +84,28 @@ def _to_response(r: OrchestrationResult) -> QueryResponse:
     )
 
 
+def _agent_to_response(r: AgentResult) -> AgentResponse:
+    return AgentResponse(
+        status=r.status,
+        verdict=r.verdict,
+        output=r.output,
+        session_id=r.session_id,
+        iterations=r.iterations,
+        audit_hash=r.input_audit_hash,
+        diagnostics={
+            "violation_layer": r.violation_layer,
+            "tool_trace": [
+                {"tool": t.tool, "status": t.status, "reason": t.reason}
+                for t in r.tool_trace
+            ],
+        },
+    )
+
+
 def create_app(
     orchestrator: Orchestrator,
     *,
+    agent: ToolAgent | None = None,
     title: str = "Krepost API",
     alert_dispatcher: AlertDispatcher | None = None,
 ) -> FastAPI:
@@ -87,6 +117,11 @@ def create_app(
             await orchestrator.pipeline.close()
         except Exception as e:  # pragma: no cover
             logger.error(f"pipeline close on shutdown failed: {e}")
+        if agent is not None and agent.pipeline is not orchestrator.pipeline:
+            try:
+                await agent.pipeline.close()
+            except Exception as e:  # pragma: no cover
+                logger.error(f"agent pipeline close on shutdown failed: {e}")
 
     app = FastAPI(title=title, version=API_VERSION, lifespan=lifespan)
     alerts = alert_dispatcher or AlertDispatcher()
@@ -99,6 +134,7 @@ def create_app(
             total = snap.get("total_requests", 0)
             redactions = snap.get("pii_redactions", 0) + snap.get("secret_redactions", 0)
             snap["pii_filter_healthy"] = bool(total == 0 or redactions > 0)
+            snap["agent_enabled"] = agent is not None
         return snap
 
     @app.middleware("http")
@@ -120,7 +156,14 @@ def create_app(
 
     @app.get("/health")
     async def health():
-        return {"status": "ok", "version": API_VERSION}
+        return {
+            "status": "ok",
+            "version": API_VERSION,
+            "agent": agent is not None,
+            "tools": (
+                [t["name"] for t in agent.registry.specs()] if agent is not None else []
+            ),
+        }
 
     @app.get("/metrics")
     async def metrics():
@@ -138,5 +181,11 @@ def create_app(
     async def query(req: QueryRequest):
         result = await orchestrator.handle(req.text, req.session_id)
         return _to_response(result)
+
+    if agent is not None:
+        @app.post("/v1/agent", response_model=AgentResponse)
+        async def agent_query(req: QueryRequest):
+            result = await agent.run(req.text, req.session_id)
+            return _agent_to_response(result)
 
     return app

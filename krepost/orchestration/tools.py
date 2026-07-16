@@ -80,6 +80,9 @@ class Tool:
     name: str
     fn: ToolFn
     description: str = ""
+    parameters: Dict[str, Any] = field(default_factory=lambda: {
+        "type": "object", "properties": {},
+    })
 
     async def run(self, args: Dict[str, Any]) -> str:
         if inspect.iscoroutinefunction(self.fn) or inspect.iscoroutinefunction(
@@ -91,7 +94,11 @@ class Tool:
         return result if isinstance(result, str) else str(result)
 
     def spec(self) -> Dict[str, Any]:
-        return {"name": self.name, "description": self.description}
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.parameters,
+        }
 
 
 class ToolRegistry:

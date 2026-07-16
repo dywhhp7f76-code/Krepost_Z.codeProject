@@ -239,3 +239,33 @@ def build_openai_agent(
     backend = OpenAIBackend(main_model, base_url=base_url, api_key=api_key,
                             transport=transport, options=options)
     return ToolAgent(pipeline, backend, ToolRegistry(tools), max_iters=max_iters)
+
+
+def build_openai_agent_with_harness(
+    main_model: str,
+    *,
+    chroma_dir: Path = DEFAULT_CHROMA_DIR,
+    memory_collection: str = DEFAULT_MEMORY_COLLECTION,
+    fewshot_collection: str = DEFAULT_FEWSHOT_COLLECTION,
+    vault_root: Path = Path("vault"),
+    max_iters: int = 6,
+    **kwargs: Any,
+) -> ToolAgent:
+    """Боевой агент: security + RAG-память + fetch/memory_search/vault_read."""
+    if make_memory_stack is None:
+        raise RuntimeError("memory stack unavailable — install sentence-transformers + chromadb")
+    from krepost.orchestration.harness_tools import build_default_harness_tools
+
+    embedder, _mem_col, memory_store = make_memory_stack(
+        chroma_dir=chroma_dir, collection_name=memory_collection,
+    )
+    client = make_chroma_client(chroma_dir)
+    fewshot_col = make_fewshot_collection(client, fewshot_collection)
+    tools = build_default_harness_tools(
+        memory_store=memory_store, vault_root=vault_root,
+    )
+    kwargs.setdefault("embedder", embedder)
+    kwargs.setdefault("chroma_collection", fewshot_col)
+    kwargs.setdefault("tools", tools)
+    kwargs.setdefault("max_iters", max_iters)
+    return build_openai_agent(main_model, **kwargs)
