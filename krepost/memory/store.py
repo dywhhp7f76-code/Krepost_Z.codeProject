@@ -98,17 +98,26 @@ class MemoryStore:
         # включить проверку контента перед записью.
         self.ingest_guard = ingest_guard
 
+    @staticmethod
+    def _to_float_list(v: Any) -> List[float]:
+        """ChromaDB требует plain float, не np.float32."""
+        if hasattr(v, "tolist"):
+            v = v.tolist()
+        if v and isinstance(v[0], (list, tuple)):
+            v = v[0]
+        return [float(x) for x in v]
+
     async def _embed(self, text: str) -> List[float]:
         # BGE-M3 (или иной embedder) — тяжёлая синхронная операция.
         # Раньше _embed звался синхронно из add()/retrieve() и блокировал
         # event loop на каждый encode. Теперь уходит в поток, как все
         # блокирующие вызовы в пайплайне (pipeline.py, tools.py).
         v = await asyncio.to_thread(self.embedder.encode, text)
-        return list(v)
+        return self._to_float_list(v)
 
     def _embed_sync(self, text: str) -> List[float]:
         """Синхронный путь encode — для не-async вызывающих (тесты с моками)."""
-        return list(self.embedder.encode(text))
+        return self._to_float_list(self.embedder.encode(text))
 
     async def add(self, doc_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> AddResult:
         sanitized = False
