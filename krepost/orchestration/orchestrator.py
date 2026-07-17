@@ -80,6 +80,7 @@ class Orchestrator:
         memory_store: Optional["MemoryStore"] = None,
         vault_name: str = "Krepost",
         episodic_memory: Optional["EpisodicMemory"] = None,
+        occ_reader: Optional[Any] = None,
     ):
         self.pipeline = pipeline
         self.router = router
@@ -88,6 +89,7 @@ class Orchestrator:
         self.memory_store = memory_store
         self.vault_name = vault_name
         self.episodic_memory = episodic_memory
+        self.occ_reader = occ_reader
 
     async def _record(self, text: str, result: OrchestrationResult) -> None:
         await record_episode(
@@ -125,9 +127,10 @@ class Orchestrator:
         # ── Маршрутизация ───────────────────────────────────────────────
         route = self.router.select(in_ctx)
 
-        # ── RAG (опционально): retrieve → build_rag_messages ────────────
+        # ── RAG (опционально): retrieve → OCC-reader или build_rag_messages ─
         rag_messages: Optional[List[Dict[str, str]]] = None
         rag_meta: Dict[str, Any] = {}
+        retrieval = None
         if self.memory_store is not None:
             try:
                 retrieval = await self.memory_store.retrieve(text)
@@ -151,12 +154,26 @@ class Orchestrator:
                 logger.warning(f"memory retrieve failed: {type(e).__name__}: {e}")
                 rag_meta["rag_error"] = type(e).__name__
 
-        # ── Генерация: исходный текст, не нормализованный ───────────────
+        # ── Генерация: OCC-reader (если есть + RAG) → иначе main LLM ────
         try:
-            gen_kwargs: Dict[str, Any] = {}
-            if rag_messages is not None:
-                gen_kwargs["messages"] = rag_messages
-            raw_output = await route.backend.generate(text, in_ctx, **gen_kwargs)
+            raw_output: Optional[str] = None
+            if (
+                self.occ_reader is not None
+                and retrieval is not None
+                and not retrieval.empty
+            ):
+                occ = await self.occ_reader.answer(text, retrieval, ctx=in_ctx)
+                rag_meta["occ_reader"] = occ.used_reader
+                if occ.error:
+                    rag_meta["occ_error"] = occ.error
+                if occ.used_reader and occ.text:
+                    raw_output = occ.text
+                    rag_meta["occ_no_data"] = occ.no_data
+            if raw_output is None:
+                gen_kwargs: Dict[str, Any] = {}
+                if rag_messages is not None:
+                    gen_kwargs["messages"] = rag_messages
+                raw_output = await route.backend.generate(text, in_ctx, **gen_kwargs)
         except Exception as e:
             # Инфраструктурный сбой бэкенда — мягкая деградация, не атака.
             logger.error(f"backend {route.name!r} generate failed: {type(e).__name__}: {e}")

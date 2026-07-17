@@ -81,6 +81,10 @@ if ENABLE_EPISODIC and embedder is not None:
         base_dir=EPISODIC_DIR,
     )
 
+from krepost.memory.occ_reader import occ_reader_from_env
+
+occ_reader = occ_reader_from_env()
+
 orchestrator = build_openai_orchestrator(
     MAIN_MODEL,
     base_url=BASE_URL,
@@ -89,6 +93,7 @@ orchestrator = build_openai_orchestrator(
     chroma_collection=fewshot_col,
     memory_store=memory_store if ENABLE_MEMORY else None,
     episodic_memory=episodic_memory,
+    occ_reader=occ_reader,
 )
 
 agent = None
@@ -112,6 +117,8 @@ if ENABLE_MEMORY:
     title_bits.append("+ memory")
 if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER:
     title_bits.append("+ MemoryRouter")
+if occ_reader is not None:
+    title_bits.append("+ OCC-reader")
 if ENABLE_EPISODIC and episodic_memory is not None:
     title_bits.append("+ episodic")
 if ENABLE_AGENT:

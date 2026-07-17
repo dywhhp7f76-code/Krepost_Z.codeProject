@@ -54,6 +54,7 @@ __all__ = [
     "OpenAIBackend",
     "OpenAIGuardClient",
     "build_openai_orchestrator",
+    "build_vllm_orchestrator",
     "build_openai_agent",
     "build_openai_agent_with_harness",
     "build_openai_pipeline",
@@ -72,5 +73,6 @@ from krepost.orchestration.factory import (  # noqa: E402
     build_openai_agent_with_harness,
     build_openai_orchestrator,
     build_openai_pipeline,
+    build_vllm_orchestrator,
     make_ollama_client,
 )

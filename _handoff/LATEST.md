@@ -9,6 +9,12 @@
 
 ---
 
+- feat(foundation+memory): SMART_CACHE batch-flush L1/L2 off event loop; OCC-RAG OccReader + Orchestrator wire (env); vLLM hook (build_vllm_orchestrator, vllm_serve.example.sh, probe_latency); Probnoki #36/#54.
+- Коммит: (ожидает)
+- Проверка: .venv/bin/python -m pytest Probnoki/test_36_smart_cache_offloaded_write.py Probnoki/test_54_occ_reader.py Probnoki/test_50_orchestrator_rag.py Probnoki/test_53_memory_router.py -q → 17 passed.
+
+---
+
 - feat(memory+governance): Phase 3 MemoryRouter scaffold — DomainRouter + per-domain Chroma where + ScoreReranker; ingest пишет metadata.domain; serve flag KREPOST_ENABLE_MEMORY_ROUTER=1; RELAI allows_auto_rsi fail-closed; Probnoki #53.
 - Коммит: 2241a4d
 - Проверка: .venv/bin/python -m pytest Probnoki/test_53_memory_router.py Probnoki/test_28_memory.py -q → 22 passed, 1 skipped.

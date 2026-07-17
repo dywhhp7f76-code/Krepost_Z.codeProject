@@ -182,6 +182,7 @@ def build_openai_orchestrator(
     memory_store: Optional[Any] = None,
     vault_name: str = "Krepost",
     episodic_memory: Optional[Any] = None,
+    occ_reader: Optional[Any] = None,
 ) -> Orchestrator:
     api_key = _resolve_openai_api_key(api_key)
     pipeline, transport = build_openai_pipeline(
@@ -197,6 +198,24 @@ def build_openai_orchestrator(
         memory_store=memory_store,
         vault_name=vault_name,
         episodic_memory=episodic_memory,
+        occ_reader=occ_reader,
+    )
+
+
+def build_vllm_orchestrator(
+    main_model: str,
+    *,
+    base_url: str = "http://127.0.0.1:8001/v1",
+    api_key: Optional[str] = None,
+    **kwargs: Any,
+) -> Orchestrator:
+    """Алиас OpenAI-стека под vLLM (тот же OpenAIBackend, другие дефолты URL).
+
+    vLLM: `vllm serve <model> --port 8001 --enable-auto-tool-choice --tool-call-parser ...`
+    См. scripts/vllm_serve.example.sh
+    """
+    return build_openai_orchestrator(
+        main_model, base_url=base_url, api_key=api_key or "EMPTY", **kwargs,
     )
 
 

@@ -83,24 +83,20 @@
 - **✅ Железо (2026-07-15):** Mac Studio M4 Max 64 GB + MacBook Air M5 32 GB на месте.
 - **✅ LM Studio на Studio (2026-07-17):** `qwen3.6-35b-a3b` + `qwen3guard-gen-4b`,
   HTTP API `:8000`, launchd автозапуск.
-- **⏳ Следующий шаг:** замер latency; vLLM MRv2 + KV-offload; LocalAI P2P Studio↔Air;
-  Ollama как альтернативный транспорт.
+- **✅ vLLM hook (2026-07-18):** `build_vllm_orchestrator` + `scripts/vllm_serve.example.sh`
+  + `scripts/probe_latency.py`. Боевой дефолт — LM Studio; vLLM — когда упрёмся в latency.
+- **⏳ Следующий шаг:** прогнать `probe_latency` LM Studio vs vLLM на Studio;
+  KV-offload / LocalAI P2P — по результатам.
 - **Откуда:** foundation/2026-07-02 (релизы vLLM 0.22–0.24, LocalAI 4.5.x, Ollama 0.30–0.31).
 - **К чему относится:** foundation — слой инференса.
 
-### SMART_CACHE: единый фоновый писатель + батч-flush  ⏳
-- **Что:** довести до конца офлоуд записи кэша с event loop. Сейчас (после
-  BUG-04) снят фриз loop на L1: savez уходит в поток по снимку. Осталось:
-  1. Тот же паттерн для `L2.put` (сейчас `_save_embeddings()` savez'ит на loop,
-     SMART_CACHE.py:448) и для eviction-путей (L1 `_evict`→`_full_rewrite`+
-     `_save_embeddings`, редкий, но на loop).
-  2. Убрать O(n²): сейчас каждый put полностью переписывает .npz со ВСЕМИ
-     эмбеддингами. Ввести dirty-flag + батч-flush (раз в N put/сек), форс-flush
-     в `close()`. Единый фоновый писатель на CacheLayer вместо записи в каждом put.
-- **Почему не сейчас:** корректный фикс — редизайн персистентности сразу для
-  L1/L2/L3 с общей блокировкой; делать отдельным дизайн-ревью, не «одним махом»
-  в баг-фиксе. Кэш off по умолчанию (`enable_cache=False`), срочности нет.
-- **Откуда:** verification sweep 2026-07-09, BUG-04 (scope-ограничен L1).
+### SMART_CACHE: единый фоновый писатель + батч-flush  ✅ scaffold
+- **Статус:** ✅ dirty-flag + batch-flush (`_flush_every`, force в `close`/
+  eviction/invalidate); L1/L2 `.npz` через `to_thread` + locks; первый persist
+  сразу (cold file). Probnoki #36 расширен (L2 off-loop, batch < N puts).
+- **Хвост:** фоновый writer-поток на CacheLayer (сейчас flush из call-site);
+  TokenPilot-паттерны — отдельно. Кэш по умолчанию off (`enable_cache=False`).
+- **Откуда:** verification sweep 2026-07-09, BUG-04.
 - **К чему относится:** foundation — слой кэша/персистентности.
 
 ### Program-as-Weights (PAW): рутинные задачи в лёгкие локальные артефакты  ⏳
@@ -600,13 +596,14 @@
 - **Откуда:** memory/2026-06-19 (LedgerAgent).
 - **Усилие:** средне.
 
-#### OCC-RAG SLM (context-faithful reader)  ⏳
-- **Что:** компактные SLM 0.6B/1.7B, оптимизированные под context-faithful Q&A
-  (ONNX/GGUF). Загрузить GGUF через llama.cpp/vLLM как локальный reader над
-  retrieve(), отвечает строго по контексту без галлюцинаций.
+#### OCC-RAG SLM (context-faithful reader)  ✅ scaffold
+- **Статус:** ✅ `krepost/memory/occ_reader.py` + врезка в Orchestrator
+  (`KREPOST_ENABLE_OCC_READER=1`, `KREPOST_OCC_MODEL`, опц. `KREPOST_OCC_URL`).
+  Fail-open на main LLM. Probnoki #54.
+- **Хвост на Studio:** загрузить GGUF OCC-RAG-0.6B/1.7B в LM Studio/vLLM и
+  выставить env; без модели флаг держать off.
 - **К чему относится:** reader-LLM над retrieve.
 - **Откуда:** memory/2026-06-19 (AIRI OCC-RAG).
-- **Усилие:** средне (требует железа для модели).
 
 #### RAG benchmark на приватных заметках  ⏳
 - **Что:** набор пар (запрос → ожидаемый документ) из реальных заметок Obsidian +

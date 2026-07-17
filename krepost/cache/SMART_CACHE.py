@@ -44,12 +44,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import numpy as np
 from loguru import logger
 from pydantic import BaseModel, Field
-from sentence_transformers import SentenceTransformer
 
 
 def init_logging(log_dir: Path = Path("data/logs")) -> None:
@@ -156,6 +155,10 @@ class _CacheBase:
         self._last_event_at: Optional[float] = None
         self._writeback_counter = 0
         self._writeback_every = 20
+        # Dirty-flag + batch-flush для .npz (не переписывать весь файл на каждый put).
+        self._embeddings_dirty = False
+        self._dirty_puts = 0
+        self._flush_every = 20  # flush после N dirty put/evict; force в close()
         # BUG-04: сериализует запись на диск и уводит savez с event loop.
         # Мутация словарей остаётся на loop (быстро/атомарно), на диск пишем
         # по снимку в отдельном потоке; Lock исключает гонку на общий tmp-файл.
@@ -166,6 +169,65 @@ class _CacheBase:
         # файл. threading.Lock — потому что запись синхронная (на loop/в потоке).
         import threading
         self._jsonl_lock = threading.Lock()
+        self._npz_thread_lock = threading.Lock()
+
+    def _mark_embeddings_dirty(self) -> None:
+        self._embeddings_dirty = True
+        self._dirty_puts += 1
+
+    def _embeddings_snapshot(self) -> Optional[Dict[str, np.ndarray]]:
+        emb = getattr(self, "_embeddings", None)
+        if emb is None:
+            return None
+        return dict(emb)
+
+    def _npz_path_attr(self) -> Optional[Path]:
+        return getattr(self, "_npz_path", None)
+
+    def _should_flush(self, *, force: bool) -> bool:
+        if not self._embeddings_dirty:
+            return False
+        if force:
+            return True
+        if self._dirty_puts >= self._flush_every:
+            return True
+        path = self._npz_path_attr()
+        # Первый persist — сразу (cold-start / durability без close).
+        if path is not None and not path.exists():
+            return True
+        return False
+
+    def _flush_embeddings_blocking(self, *, force: bool = False) -> None:
+        """Синхронный flush (close / sync-evict). savez под threading.Lock."""
+        path = self._npz_path_attr()
+        if path is None or not self._should_flush(force=force):
+            return
+        snapshot = self._embeddings_snapshot()
+        self._embeddings_dirty = False
+        self._dirty_puts = 0
+        if not snapshot:
+            return
+        with self._npz_thread_lock:
+            self._atomic_write_npz(path, snapshot)
+
+    async def _flush_embeddings_async(self, *, force: bool = False) -> None:
+        """Async flush: снимок на loop, savez в to_thread (не блокирует loop)."""
+        path = self._npz_path_attr()
+        if path is None or not self._should_flush(force=force):
+            return
+        async with self._disk_lock:
+            if not self._should_flush(force=force):
+                return
+            snapshot = self._embeddings_snapshot()
+            self._embeddings_dirty = False
+            self._dirty_puts = 0
+            if not snapshot:
+                return
+            await asyncio.to_thread(self._flush_npz_locked, path, snapshot)
+
+    def _flush_npz_locked(self, path: Path, snapshot: Dict[str, np.ndarray]) -> None:
+        with self._npz_thread_lock:
+            self._atomic_write_npz(path, snapshot)
 
     def _emit(self, event_type: CacheEventType, level: EventLevel,
               message: str, payload: Optional[dict] = None) -> None:
@@ -204,7 +266,7 @@ class QueryEmbeddingCache(_CacheBase):
     LAYER = CacheLevel.L1_EMBEDDING
     QUERY_PREFIX = "query: "
 
-    def __init__(self, encoder: SentenceTransformer, cache_dir: Path = Path("data/cache"),
+    def __init__(self, encoder: Any, cache_dir: Path = Path("data/cache"),
                  max_entries: int = 10_000,
                  on_event: Optional[Callable[[CacheEvent], None]] = None):
         super().__init__(cache_dir=cache_dir, max_entries=max_entries, on_event=on_event)
@@ -282,17 +344,13 @@ class QueryEmbeddingCache(_CacheBase):
         embedding = await asyncio.to_thread(self.encoder.encode, text,
                                             convert_to_numpy=True, normalize_embeddings=True)
         self._put_memory(key, query, embedding)
-        # BUG-04: savez — вне event loop, по снимку, сериализованно.
-        async with self._disk_lock:
-            snapshot = dict(self._embeddings)  # на loop, атомарно (без await)
-            if snapshot:
-                await asyncio.to_thread(self._atomic_write_npz, self._npz_path, snapshot)
+        # Batch-flush .npz (dirty-flag); force не нужен на каждый miss.
+        await self._flush_embeddings_async(force=False)
         return embedding
 
     def _put_memory(self, key: str, query: str, embedding: np.ndarray) -> None:
         """Мутация in-memory + дешёвый append jsonl. Тяжёлая запись .npz —
-        отдельно, вне event loop (см. encode). Синхронно, на loop → атомарно
-        относительно других корутин того же loop'а."""
+        через dirty-flag + batch flush (см. encode)."""
         if len(self._entries) >= self.max_entries:
             self._evict(target_size=self.max_entries - 1)
         entry = L1Entry(key=key, query_preview=query[:80])
@@ -300,6 +358,7 @@ class QueryEmbeddingCache(_CacheBase):
         self._embeddings[key] = embedding
         self._writeback_counter += 1
         self._save_entry_append(entry)
+        self._mark_embeddings_dirty()
         self._emit(CacheEventType.PUT, EventLevel.GREEN, f"L1 put | key={key}")
 
     def _save_entry_append(self, entry: L1Entry) -> None:
@@ -308,9 +367,8 @@ class QueryEmbeddingCache(_CacheBase):
                 f.write(entry.model_dump_json() + "\n")
 
     def _save_embeddings(self) -> None:
-        if not self._embeddings:
-            return
-        self._atomic_write_npz(self._npz_path, self._embeddings)
+        """Совместимость: форс-flush dirty .npz (sync)."""
+        self._flush_embeddings_blocking(force=True)
 
     def _maybe_writeback(self) -> None:
         self._writeback_counter += 1
@@ -333,7 +391,9 @@ class QueryEmbeddingCache(_CacheBase):
             self._embeddings.pop(key, None)
         self._emit(CacheEventType.EVICTED, EventLevel.GREEN, f"L1 evicted {n_remove} entries")
         self._full_rewrite()
-        self._save_embeddings()
+        self._mark_embeddings_dirty()
+        # Durability после eviction: форс-flush (редко; sync path из put_memory).
+        self._flush_embeddings_blocking(force=True)
 
     def stats(self) -> CacheStats:
         total = self._hits + self._misses
@@ -344,7 +404,7 @@ class QueryEmbeddingCache(_CacheBase):
 
     def close(self) -> None:
         self._full_rewrite()
-        self._save_embeddings()
+        self._flush_embeddings_blocking(force=True)
         self._save_metadata()
 
 
@@ -465,7 +525,8 @@ class RAGResultsCache(_CacheBase):
         for note in source_notes:
             self._note_to_keys.setdefault(note, set()).add(key)
         self._save_entry_append(entry)
-        self._save_embeddings()
+        self._mark_embeddings_dirty()
+        await self._flush_embeddings_async(force=False)
         self._emit(CacheEventType.PUT, EventLevel.GREEN, f"L2 put | key={key}")
         return key
 
@@ -475,7 +536,8 @@ class RAGResultsCache(_CacheBase):
             self._remove(key, skip_index=True)
         if keys:
             self._full_rewrite()
-            self._save_embeddings()
+            self._mark_embeddings_dirty()
+            self._flush_embeddings_blocking(force=True)
             level = EventLevel.YELLOW if len(keys) > 500 else EventLevel.GREEN
             event_type = (CacheEventType.MASS_INVALIDATION if len(keys) > 500
                           else CacheEventType.INVALIDATED_BY_NOTE)
@@ -505,7 +567,8 @@ class RAGResultsCache(_CacheBase):
             for key, _ in sorted_by_lru[:n_remove]:
                 self._remove(key)
         self._full_rewrite()
-        self._save_embeddings()
+        self._mark_embeddings_dirty()
+        self._flush_embeddings_blocking(force=True)
 
     def _save_entry_append(self, entry: L2Entry) -> None:
         with self._jsonl_lock:  # #16
@@ -513,16 +576,14 @@ class RAGResultsCache(_CacheBase):
                 f.write(entry.model_dump_json() + "\n")
 
     def _save_embeddings(self) -> None:
-        if not self._embeddings:
-            return
-        self._atomic_write_npz(self._npz_path, self._embeddings)
+        self._flush_embeddings_blocking(force=True)
 
     def _full_rewrite(self) -> None:
         with self._jsonl_lock:  # #16
             content = "\n".join(e.model_dump_json() for e in self._entries.values())
             if content:
                 content += "\n"
-        self._atomic_write(self._jsonl_path, content)
+            self._atomic_write(self._jsonl_path, content)
 
     def stats(self) -> CacheStats:
         total = self._hits + self._misses
@@ -533,7 +594,7 @@ class RAGResultsCache(_CacheBase):
 
     def close(self) -> None:
         self._full_rewrite()
-        self._save_embeddings()
+        self._flush_embeddings_blocking(force=True)
 
 
 class LLMResponseCache(_CacheBase):
@@ -658,7 +719,7 @@ class LLMResponseCache(_CacheBase):
             content = "\n".join(e.model_dump_json() for e in self._entries.values())
             if content:
                 content += "\n"
-        self._atomic_write(self._jsonl_path, content)
+            self._atomic_write(self._jsonl_path, content)
 
     def stats(self) -> CacheStats:
         total = self._hits + self._misses
@@ -795,7 +856,7 @@ class CacheLayer:
         self.cache_dir = cache_dir
         init_cache_dirs(cache_dir)
         self._model_name = model_name
-        self._encoder: Optional[SentenceTransformer] = None
+        self._encoder: Optional[Any] = None
         self.anomaly = AnomalyDetector(growth_threshold_per_min=anomaly_growth_threshold,
                                        miss_rate_threshold=anomaly_miss_rate_threshold,
                                        window_seconds=anomaly_window_seconds, on_event=on_event)
@@ -835,6 +896,8 @@ class CacheLayer:
     def warmup(self) -> None:
         if self._ready:
             return
+        from sentence_transformers import SentenceTransformer
+
         self._encoder = SentenceTransformer(self._model_name)
         self._l1 = QueryEmbeddingCache(
             encoder=self._encoder, cache_dir=self.cache_dir,
