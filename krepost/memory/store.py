@@ -168,23 +168,39 @@ class MemoryStore:
         self.collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
         return AddResult(doc_id, len(chunks), sanitized=sanitized)
 
-    async def retrieve(self, query: str, k: int = 5) -> RetrievalResult:
+    async def retrieve(
+        self,
+        query: str,
+        k: int = 5,
+        *,
+        where: Optional[Dict[str, Any]] = None,
+    ) -> RetrievalResult:
         if not query or not query.strip():
             return RetrievalResult(query, [], 0.0, False)
 
         qvec = await self._embed(query)
-        res = await asyncio.to_thread(
-            self.collection.query, query_embeddings=[qvec], n_results=k
-        )
+        kwargs: Dict[str, Any] = {"query_embeddings": [qvec], "n_results": k}
+        if where is not None:
+            kwargs["where"] = where
+        res = await asyncio.to_thread(self.collection.query, **kwargs)
         return self._parse_retrieval(query, res)
 
-    def retrieve_sync(self, query: str, k: int = 5) -> RetrievalResult:
+    def retrieve_sync(
+        self,
+        query: str,
+        k: int = 5,
+        *,
+        where: Optional[Dict[str, Any]] = None,
+    ) -> RetrievalResult:
         """Синхронная обёртка над retrieve() — для тестов/скриптов без event loop."""
         if not query or not query.strip():
             return RetrievalResult(query, [], 0.0, False)
 
         qvec = self._embed_sync(query)
-        res = self.collection.query(query_embeddings=[qvec], n_results=k)
+        kwargs: Dict[str, Any] = {"query_embeddings": [qvec], "n_results": k}
+        if where is not None:
+            kwargs["where"] = where
+        res = self.collection.query(**kwargs)
         return self._parse_retrieval(query, res)
 
     def _parse_retrieval(self, query: str, res: Dict[str, Any]) -> RetrievalResult:

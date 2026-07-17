@@ -11,7 +11,12 @@ serve_lmstudio.py — БОЕВОЙ HTTP-сервер Крепости повер
 
 Запуск:
     KREPOST_ENABLE_MEMORY=1 KREPOST_ENABLE_AGENT=1 KREPOST_ENABLE_EPISODIC=1 \\
+    KREPOST_ENABLE_MEMORY_ROUTER=1 \\
       uvicorn serve_lmstudio:app --host 0.0.0.0 --port 8000
+
+MemoryRouter (Phase 3): domain route → per-domain retrieve → ScoreReranker.
+CrossEncoder: KREPOST_RERANKER_CROSS_ENCODER=1 (тяжёлый, по умолчанию off).
+После включения — переиндексировать vault (metadata.domain): python ingest_vault.py
 """
 import os
 from pathlib import Path
@@ -43,6 +48,12 @@ ENABLE_AGENT = os.environ.get("KREPOST_ENABLE_AGENT", "1").lower() not in (
 ENABLE_EPISODIC = os.environ.get("KREPOST_ENABLE_EPISODIC", "1").lower() not in (
     "0", "false", "no", "off",
 )
+ENABLE_MEMORY_ROUTER = os.environ.get("KREPOST_ENABLE_MEMORY_ROUTER", "1").lower() not in (
+    "0", "false", "no", "off",
+)
+USE_RERANKER_CE = os.environ.get("KREPOST_RERANKER_CROSS_ENCODER", "0").lower() not in (
+    "0", "false", "no", "off",
+)
 VAULT = Path(os.environ.get("KREPOST_VAULT", "vault"))
 CHROMA_DIR = env_chroma_dir()
 EPISODIC_DIR = Path(os.environ.get("KREPOST_EPISODIC_DIR", "data/memory"))
@@ -54,6 +65,12 @@ episodic_memory = None
 
 if ENABLE_MEMORY or ENABLE_AGENT:
     embedder, _mem_col, memory_store = make_memory_stack(chroma_dir=CHROMA_DIR)
+    if ENABLE_MEMORY_ROUTER and memory_store is not None:
+        from krepost.memory.memory_router import wrap_memory_store
+
+        memory_store = wrap_memory_store(
+            memory_store, use_cross_encoder=USE_RERANKER_CE,
+        )
     client = make_chroma_client(CHROMA_DIR)
     fewshot_col = make_fewshot_collection(client)
 
@@ -93,6 +110,8 @@ if ENABLE_AGENT:
 title_bits = ["Krepost API (LM Studio"]
 if ENABLE_MEMORY:
     title_bits.append("+ memory")
+if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER:
+    title_bits.append("+ MemoryRouter")
 if ENABLE_EPISODIC and episodic_memory is not None:
     title_bits.append("+ episodic")
 if ENABLE_AGENT:

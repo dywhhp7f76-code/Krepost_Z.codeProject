@@ -9,6 +9,12 @@
 
 ---
 
+- feat(memory+governance): Phase 3 MemoryRouter scaffold — DomainRouter + per-domain Chroma where + ScoreReranker; ingest пишет metadata.domain; serve flag KREPOST_ENABLE_MEMORY_ROUTER=1; RELAI allows_auto_rsi fail-closed; Probnoki #53.
+- Коммит: (ожидает)
+- Проверка: .venv/bin/python -m pytest Probnoki/test_53_memory_router.py Probnoki/test_28_memory.py -q → 22 passed, 1 skipped.
+
+---
+
 - docs(ROADMAP): разведка 2026-07-16 — сводная таблица СЕЙЧАС/СКОРО/ПОТОМ/НЕ БРАТЬ с обязательным этапом (Phase 3 MemoryRouter, HealthClaw induction, RELAI gate, Ataker evals, …); Phase 3 помечен 🔜 следующая волна.
 - Коммит: 08ea93d
 - Проверка: секция «Разведданные 2026-07-16» в ROADMAP.md.

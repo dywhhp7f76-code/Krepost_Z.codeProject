@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from krepost.memory.chroma_factory import env_chroma_dir, make_memory_stack
+from krepost.memory.domains import domain_from_relpath
 
 VAULT = Path(__file__).resolve().parent / "vault"
 TEXT_SUFFIXES = {".md", ".txt", ".markdown"}
@@ -60,7 +61,12 @@ async def ingest(
         if not text.strip():
             continue
         doc_id = rel
-        meta = {"src": rel, "source": rel, "file_hash": _file_hash(path)}
+        meta = {
+            "src": rel,
+            "source": rel,
+            "file_hash": _file_hash(path),
+            "domain": domain_from_relpath(rel),
+        }
         result = await store.add(doc_id, text, metadata=meta)
         if result.blocked:
             blocked += 1

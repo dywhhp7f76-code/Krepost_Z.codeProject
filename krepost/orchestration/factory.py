@@ -206,6 +206,8 @@ def build_openai_orchestrator_with_memory(
     chroma_dir: Path = DEFAULT_CHROMA_DIR,
     memory_collection: str = DEFAULT_MEMORY_COLLECTION,
     fewshot_collection: str = DEFAULT_FEWSHOT_COLLECTION,
+    enable_memory_router: bool = False,
+    use_cross_encoder: bool = False,
     **kwargs: Any,
 ) -> Orchestrator:
     """Боевой стек: BGE-M3 + persistent Chroma (memory + fewshot) + MemoryStore."""
@@ -214,6 +216,12 @@ def build_openai_orchestrator_with_memory(
     embedder, mem_col, memory_store = make_memory_stack(
         chroma_dir=chroma_dir, collection_name=memory_collection,
     )
+    if enable_memory_router:
+        from krepost.memory.memory_router import wrap_memory_store
+
+        memory_store = wrap_memory_store(
+            memory_store, use_cross_encoder=use_cross_encoder,
+        )
     client = make_chroma_client(chroma_dir)
     fewshot_col = make_fewshot_collection(client, fewshot_collection)
     kwargs.setdefault("embedder", embedder)

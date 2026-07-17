@@ -1,8 +1,9 @@
 # СПЕЦИФИКАЦИЯ: Многослойная память с маршрутизацией (MemoryRouter)
 
-> **Статус:** проект, **НЕ начинать** пока не закрыт текущий поэтапный хвост
-> и не приедет железо (Mac Studio). Этот файл — фиксация замысла оператора,
-> не задача к исполнению.
+> **Статус:** scaffold ✅ (`krepost/memory/memory_router.py` + DomainRouter +
+> ScoreReranker). Врезка в `serve_lmstudio` за флагом
+> `KREPOST_ENABLE_MEMORY_ROUTER`. Бой на Studio — после re-ingest vault
+> с `metadata.domain`. CrossEncoder reranker — опционально.
 
 ## Цель
 

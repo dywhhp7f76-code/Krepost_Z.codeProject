@@ -118,11 +118,15 @@
 
 ## 🧠 memory
 
-### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  🔜 СЕЙЧАС (следующая волна)
-- **Статус:** 🔜 приоритет №1 после live-стека Studio. Кода MemoryRouter ещё нет;
-  плоский RAG (одна коллекция `krepost_mem`) уже в бою.
-- **Этап:** **memory / Phase 3** — ставить **сейчас**, до Phase 4 и до RSI.
-- **Зависимости:** ✅ Studio live (API+RAG+agent+episodic). Можно начинать.
+### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  ✅ scaffold
+- **Статус:** ✅ код scaffold: `DomainRouter` → per-domain retrieve (`metadata.domain`)
+  → `ScoreReranker` → LLM; обёртка `MemoryRouter` в `serve_lmstudio`
+  (`KREPOST_ENABLE_MEMORY_ROUTER=1`). CrossEncoder — флаг
+  `KREPOST_RERANKER_CROSS_ENCODER` (по умолчанию off). Probnoki #53.
+- **Хвост до боя на Studio:** re-ingest vault (`ingest_vault.py` пишет `domain`) +
+  rsync/рестарт API. Без re-ingest — flat fallback.
+- **Этап:** **memory / Phase 3** — scaffold готов; бой на Studio — следующий шаг.
+- **Зависимости:** ✅ Studio live (API+RAG+agent+episodic).
 - **Усиление из разведки 2026-07-16:** domain-routed RAG (Habr/LangGraph) —
   роутер по доменам знаний вместо naive flat retrieval; см. секцию
   «Разведданные 2026-07-16» ниже.
@@ -339,7 +343,8 @@
 - **Когда внедрять код verifier:** этап evolution, после Ataker eval-suite
   (Useful/Correct/Safe) — судья гоняет старые сценарии после каждого изменения.
 - **Откуда:** evolution/2026-07-16.
-- **Статус:** 🔜 зафиксировать в `ImprovementGate` / правилах; код verifier — следующая подфаза.
+- **Статус:** ✅ правило в `krepost/governance/relai.py` (`allows_auto_rsi` —
+  fail-closed без зелёного регресс-набора). Код verifier / Ataker suite — следующая подфаза.
 
 ### Безопасный каркас RSI: verifiable-gate + error budget  ⏳
 - **Что:** самомодификация только через steering-adapter вокруг ЗАМОРОЖЕННОЙ базовой модели; каждая правка — через anytime-valid gate с аудируемым сертификатом и откатом при регрессии (SEA). Плюс принцип «governance conversion»: контроли ОТКРЫВАЮТСЯ из сбоев агентной работы, а не задаются заранее.
