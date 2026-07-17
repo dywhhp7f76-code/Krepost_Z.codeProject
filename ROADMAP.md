@@ -118,9 +118,14 @@
 
 ## 🧠 memory
 
-### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  ⏳ planned
-- **Статус:** planned. Кода нет.
-- **Зависимости:** железо (Mac Studio) + закрытие текущего поэтапного хвоста.
+### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  🔜 СЕЙЧАС (следующая волна)
+- **Статус:** 🔜 приоритет №1 после live-стека Studio. Кода MemoryRouter ещё нет;
+  плоский RAG (одна коллекция `krepost_mem`) уже в бою.
+- **Этап:** **memory / Phase 3** — ставить **сейчас**, до Phase 4 и до RSI.
+- **Зависимости:** ✅ Studio live (API+RAG+agent+episodic). Можно начинать.
+- **Усиление из разведки 2026-07-16:** domain-routed RAG (Habr/LangGraph) —
+  роутер по доменам знаний вместо naive flat retrieval; см. секцию
+  «Разведданные 2026-07-16» ниже.
 - **Детали:** [_handoff/MEMORY_ROUTER_SPEC.md](_handoff/MEMORY_ROUTER_SPEC.md)
 
 ### Phase 4 — Агенты-хранители памяти  ⏳ vision (фиксация замысла оператора)
@@ -183,7 +188,9 @@
   с RAG, без второй загрузки); `record_episode` в Orchestrator и ToolAgent после
   каждого ответа; RED/YELLOW → quarantine; `KREPOST_ENABLE_EPISODIC=1` (дефолт on);
   persist `data/memory/`. Probnoki #52 (quarantine).
-- **Next:** MemoryRouter (Phase 3), Ataker на Air, Telegram-алерты — позже.
+- **Next (этап memory, СЕЙЧАС после Phase 3 scaffold):** HealthClaw-style
+  induction поверх episodic (что в профиль / процедуру / эпизод / выкинуть) —
+  см. разведку 2026-07-16. MemoryRouter (Phase 3), Ataker на Air, Telegram — позже.
 
 ### Контекстная инженерия для слабых локальных моделей  ✅ (в составе RAG-слоя)
 - **Что готово:** relevance threshold + ранжирование по score + фильтрация
@@ -324,10 +331,21 @@
 
 ## 🚀 evolution
 
+### RELAI-VCL / regression control в RSI  🔜 СЕЙЧАС (gate ДО любого self-improve)
+- **Что:** улучшения агента компаундятся только при встроенном regression control;
+  без него GEPA/Meta Harness деградируют на новых задачах (arXiv 2607.14004).
+- **Этап:** **evolution + governance** — ставить **сейчас как правило gate**,
+  ещё до кода RSI: любой auto-edit промптов/скриптов запрещён без регресс-набора.
+- **Когда внедрять код verifier:** этап evolution, после Ataker eval-suite
+  (Useful/Correct/Safe) — судья гоняет старые сценарии после каждого изменения.
+- **Откуда:** evolution/2026-07-16.
+- **Статус:** 🔜 зафиксировать в `ImprovementGate` / правилах; код verifier — следующая подфаза.
+
 ### Безопасный каркас RSI: verifiable-gate + error budget  ⏳
 - **Что:** самомодификация только через steering-adapter вокруг ЗАМОРОЖЕННОЙ базовой модели; каждая правка — через anytime-valid gate с аудируемым сертификатом и откатом при регрессии (SEA). Плюс принцип «governance conversion»: контроли ОТКРЫВАЮТСЯ из сбоев агентной работы, а не задаются заранее.
 - **Откуда:** evolution/2026-07-02 (SEA — Self-Evolving Agents with Anytime-Valid Certificates; Governable Agentic SE).
 - **К чему относится:** evolution + governance — расширение нашего `ImprovementGate` явным error-budget.
+- **Этап:** evolution — **после** RELAI-правила и Ataker evals; не раньше Phase 3 MemoryRouter.
 - **Почему не сейчас:** сначала должен появиться self-improvement контур; но это прямое академическое подтверждение того, что мы строим руками — свериться стоит уже при доработке gate.
 
 ### Самопополняющиеся verifiable-правила  ⏳
@@ -341,6 +359,106 @@
 - **Откуда:** evolution/2026-07-01 (TRIAGE, RLMF, AxDafny).
 - **К чему относится:** evolution — self-critique loops, multi-agent consensus.
 - **Почему не сейчас:** это про обучение/дообучение агентов; включаем, когда дойдём до RSI-контура. Трезвый противовес: «AI Isn't Ready to Build Complex Software» — не переоценивать автономию.
+
+---
+
+## 🆕 Разведданные 2026-07-16 (github-copilot-expert) — очередь после live-стека
+
+> Источник: `defense|evolution|foundation|memory|redteam/2026-07-16.md`.
+> Разбор оператора 2026-07-17. Боевой стек Studio уже жив → ценность в
+> **памяти / регрессии / redteam**, не в смене инференс-движка.
+>
+> Легенда колонки **Когда:**
+> - **СЕЙЧАС** — брать в ближайшую волну (после текущего live-стека)
+> - **СКОРО** — следующая волна (есть предпосылки)
+> - **ПОТОМ** — только после указанных этапов
+> - **НЕ БРАТЬ** — вне периметра / шум сейчас
+
+### Сводная таблица (что ставить и на каком этапе)
+
+| Приоритет | Что | Этап Крепости | Когда | Зачем |
+|-----------|-----|---------------|-------|-------|
+| 1 | Domain-routed RAG → **MemoryRouter Phase 3** | memory / Phase 3 | **СЕЙЧАС** | Плоский RAG упрётся в домены vault |
+| 2 | HealthClaw induction поверх EpisodicMemory | memory / episodic | **СЕЙЧАС** (после Phase 3 scaffold или параллельно тонким слоем) | Не раздувать контекст; решать что закреплять |
+| 3 | RELAI regression control в ImprovementGate | evolution + governance | **СЕЙЧАС** (правило), код verifier — с Ataker evals | Без этого RSI деградирует |
+| 4 | Evals Useful/Correct/Safe + AI-пентест сценарии | redteam / Ataker | **СЕЙЧАС→СКОРО** (на Air) | Continuous redteam + регресс для gate |
+| 5 | Rubric-groundedness поверх RAG-ответа | memory + defense L4 | **СКОРО** (после Phase 3) | Меньше галлюцинаций на vault |
+| 6 | MCP tool/memory server (единый bridge) | foundation / harness | **СКОРО** (после стабилизации `/v1/agent`) | Cursor и внешние клиенты в один контур |
+| 7 | Deep Interaction (точечная правка CoT) | evolution / judge | **ПОТОМ** (этап multi-step judge) | Дешевле полной регенерации |
+| 8 | TRACE credit per tool-call | evolution / RL | **ПОТОМ** (этап обучения агентов) | Research |
+| 9 | Anomaly rank на векторах запросов | defense / metrics | **СКОРО** (с алертами) | Подсветка хвоста до Guard |
+| 10 | Prompt sanitization приёмы (Habr) | defense L1 | **СКОРО** (точечно) | Усиление Regex/semantic, не замена Guard |
+| 11 | HTTP desync / parser-inconsistency fuzz | redteam → API | **СКОРО** (против `:8000`) | Свой HTTP — поверхность |
+| 12 | Retrieval poisoning сценарии Ataker | redteam + memory | **СЕЙЧАС→СКОРО** с Ataker | Прямая угроза vault/RAG |
+| — | Bonsai 1-bit как main | foundation | **НЕ БРАТЬ** как main; **ПОТОМ** edge/iPhone | Studio уже тянет 35B-A3B |
+| — | Миграция Chroma→Postgres/pgvector | memory | **НЕ БРАТЬ** сейчас | Chroma live; контрастный вектор — идея, не миграция |
+| — | vLLM 0.25 / полный уход с LM Studio | foundation | **ПОТОМ** (если упрёмся в latency) | LM Studio ок |
+| — | SAML/CSRF/cookie Top-10 | redteam | **ПОТОМ** (только с веб-панелью) | См. сервер vs клиент |
+| — | Telegram-алерты | ops / alerts | **ПОТОМ** (отложено оператором) | T8 webhook уже есть |
+
+### memory — детали
+
+#### Domain-routed agents / MemoryRouter  🔜 СЕЙЧАС · этап **memory Phase 3**
+- **Что:** роутер по доменам vault вместо naive flat RAG (Habr LangGraph + наша MEMORY_ROUTER_SPEC).
+- **Ставить:** **сейчас** — следующая крупная фича после live-стека.
+- **Не раньше:** — (предпосылки закрыты: Studio+Chroma+vault).
+- **Откуда:** memory/2026-07-16.
+
+#### HealthClaw induction  🔜 СЕЙЧАС · этап **memory / episodic**
+- **Что:** после эпизода решать: профиль / процедура / оставить episodic / выкинуть.
+- **Ставить:** **сейчас** тонким слоем поверх уже живого EpisodicMemory; полный цикл — вместе с Phase 3.
+- **Откуда:** memory/2026-07-16 (HC-Guo/HealthClaw).
+
+#### Rubric-grounded RAG  ⏳ СКОРО · этап **memory + defense L4**
+- **Что:** ответ обязан опираться на retrieved + рубричная проверка.
+- **Ставить:** **после** Phase 3 (когда домены стабильны), иначе рубрика на плоском RAG даст шум.
+- **Откуда:** memory/2026-07-16 (Earthquaker-AI).
+
+#### Контрастный вектор / pgvector  ⏸ ПОТОМ · этап **memory**
+- **Что:** персонализация retrieval like/dislike; опционально Postgres.
+- **Ставить:** **не сейчас** — Chroma боевой; приём «контрастный вектор» можно позже внутри MemoryRouter без смены БД.
+- **Откуда:** memory/2026-07-16 (CleanNews).
+
+### evolution — детали
+
+#### RELAI regression control  🔜 СЕЙЧАС · этап **governance → evolution**
+- **Ставить правило СЕЙЧАС:** запрет auto-RSI без регресс-набора.
+- **Ставить код verifier:** этап evolution, **после** Ataker Useful/Correct/Safe suite.
+- **Откуда:** evolution/2026-07-16 (arXiv 2607.14004).
+
+#### Deep Interaction / TRACE  ⏳ ПОТОМ · этап **evolution / multi-agent judge**
+- **Ставить:** только когда есть стабильный multi-step agent + judge loop (после Phase 3 и Ataker).
+- **Откуда:** evolution/2026-07-16.
+
+### defense — детали
+
+#### Prompt sanitization + anomaly scoring  ⏳ СКОРО · этап **defense L1 + metrics**
+- **Ставить:** после MemoryRouter scaffold или параллельно с алертами; не ломать fail-closed Guard.
+- **Откуда:** defense/2026-07-16.
+
+### redteam — детали
+
+#### Useful/Correct/Safe + AI behavioural pentest  🔜 СЕЙЧАС→СКОРО · этап **redteam / Ataker на Air**
+- **Ставить:** **следующий крупный трек на MacBook Air** параллельно Phase 3 на Studio.
+- **Обязательные сценарии из 2026-07-16:** retrieval poisoning, indirect prompt injection, tool misuse.
+- **Откуда:** redteam/2026-07-16.
+
+#### HTTP desync / parser fuzz своего API  ⏳ СКОРО · этап **redteam → foundation API**
+- **Ставить:** когда Ataker умеет бить HTTP; цель — `10.0.0.1:8000`.
+- **Откуда:** redteam/2026-07-16 (PortSwigger HTTP/1 must die).
+
+#### Классический веб (SAML, CSRF, cookies)  ⏸ ПОТОМ · этап **redteam**
+- **Ставить:** только при появлении веб-панели с логином (см. таблицу сервер/клиент).
+
+### foundation — детали
+
+#### MCP единый tool/memory server  ⏳ СКОРО · этап **foundation / harness**
+- **Ставить:** после стабилизации `/v1/agent` + 1–2 внешних клиента (Cursor).
+- **Откуда:** foundation/2026-07-16.
+
+#### Bonsai 1-bit / vLLM 0.25 / Ollama MTP  ⏸ ПОТОМ · этап **foundation**
+- **Ставить:** только если latency/память упрутся; не менять живой LM Studio «ради релиза».
+- **Откуда:** foundation/2026-07-16.
 
 ---
 
