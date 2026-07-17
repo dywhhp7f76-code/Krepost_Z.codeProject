@@ -23,12 +23,16 @@ from __future__ import annotations
 import asyncio
 import inspect
 from dataclasses import dataclass, field
-from typing import (Any, Awaitable, Callable, Dict, List, Literal, Optional,
-                    Protocol, Sequence, Union, runtime_checkable)
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Literal,
+                    Optional, Protocol, Sequence, Union, runtime_checkable)
 
+from krepost.memory.episode_hook import record_episode
 from krepost.security.pipeline import SecurityContext, SecurityPipeline, Verdict
 from krepost.security.tool_guard import ToolOutputGuard
 from krepost.security.url_guard import UrlGuard
+
+if TYPE_CHECKING:
+    from krepost.memory.episodic import EpisodicMemory
 
 try:
     from loguru import logger
@@ -187,6 +191,7 @@ class ToolAgent:
         tool_output_guard: Optional[ToolOutputGuard] = None,
         max_iters: int = 6,
         blocked_message: str = "Доступ заблокирован.",
+        episodic_memory: Optional["EpisodicMemory"] = None,
     ):
         self.pipeline = pipeline
         self.backend = backend
@@ -194,12 +199,24 @@ class ToolAgent:
         self.tool_guard = tool_output_guard or ToolOutputGuard()
         self.max_iters = max_iters
         self.blocked_message = blocked_message
+        self.episodic_memory = episodic_memory
+
+    async def _record(self, text: str, result: AgentResult) -> AgentResult:
+        await record_episode(
+            self.episodic_memory,
+            query=text,
+            response=result.output,
+            session_id=result.session_id,
+            verdict=result.verdict,
+            status=result.status,
+        )
+        return result
 
     async def run(self, text: str, session_id: str) -> AgentResult:
         # ── Вход: Layer 1-3. Скомпрометирован → цикл НЕ запускается ──────
         in_ctx = await self.pipeline.process(text, session_id)
         if in_ctx.is_compromised:
-            return AgentResult(
+            result = AgentResult(
                 session_id=session_id,
                 status="blocked_input",
                 verdict=in_ctx.verdict,
@@ -207,6 +224,7 @@ class ToolAgent:
                 input_audit_hash=in_ctx.audit_hash,
                 violation_layer=in_ctx.violation_layer,
             )
+            return await self._record(text, result)
 
         messages: List[Dict[str, Any]] = [{"role": "user", "content": text}]
         trace: List[ToolTraceEntry] = []
@@ -243,7 +261,7 @@ class ToolAgent:
 
         if final_text is None:
             # Цикл исчерпан без финального ответа — мягкая деградация.
-            return AgentResult(
+            result = AgentResult(
                 session_id=session_id,
                 status="max_iters",
                 verdict=in_ctx.verdict,
@@ -252,6 +270,7 @@ class ToolAgent:
                 tool_trace=trace,
                 iterations=iterations,
             )
+            return await self._record(text, result)
 
         # ── Выход: Layer 4 ──────────────────────────────────────────────
         out_ctx = SecurityContext(session_id=session_id, user_input=text)
@@ -259,7 +278,7 @@ class ToolAgent:
         out_ctx = await self.pipeline.process_output(out_ctx)
         blocked_out = out_ctx.is_compromised
 
-        return AgentResult(
+        result = AgentResult(
             session_id=session_id,
             status="blocked_output" if blocked_out else "ok",
             verdict=out_ctx.verdict if blocked_out else in_ctx.verdict,
@@ -269,3 +288,4 @@ class ToolAgent:
             tool_trace=trace,
             iterations=iterations,
         )
+        return await self._record(text, result)

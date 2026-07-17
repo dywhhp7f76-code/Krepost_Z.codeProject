@@ -44,7 +44,7 @@
 | **Main** | **Qwen3.6-35B-A3B** (MoE, Q4) | Mac Studio | ✅ выбор оператора; умнее dense 27B на Studio |
 | **Guard** | Qwen3Guard-Gen-4B (Q4_K_S) | Mac Studio (+ Air smoke) | ✅ smoke GREEN/RED на LM Studio |
 | **Attacker** | **uncensored local** (канд. `dolphin3-cyber-8b`) | MacBook Air | ⏳ финальный выбор — без alignment, только red-team |
-| **Embedder** | nomic-embed-text v1.5 / BGE-M3 | Mac Studio | 🔜 pull + RAG |
+| **Embedder** | **BGE-M3** (SentenceTransformer) | Mac Studio | ✅ live RAG + episodic |
 | **Reader** | OCC-RAG-1.7B | Mac Studio | ⏳ planned |
 | **Draft/smoke** | llama-3.2-1b-instruct, qwen2.5-0.5b-mlx | Air (LM Studio) | ✅ smoke ok |
 
@@ -52,6 +52,10 @@
 - LM Studio на Air: `http://127.0.0.1:1234/v1`; guard id = `qwen3guard-gen-4b` (дефис, не `:` как в Ollama).
 - Guard timeout на CPU Air: **120 s** (дефолт 5 s → circuit breaker).
 - На Studio main — **35b-a3b**, не 27b dense (ROADMAP-v2.1 устарел, см. ниже).
+- **Studio боевой стек (2026-07-17):** LM Studio `:1234` + API `:8000` (`serve_lmstudio.py`);
+  `/v1/query` (security→RAG→LLM), `/v1/agent` (fetch/memory_search/vault_read);
+  BGE-M3 + persistent Chroma, EpisodicMemory (GREEN/YELLOW/RED→quarantine),
+  launchd `com.hervam.krepost.serve`. Smoke `KREPOST-RAG-7742` проходит.
 
 ---
 
@@ -77,8 +81,10 @@
   ollama-клиент обслуживает guard (Qwen3Guard) и main (Qwen3.x). Тесты на фейк-
   клиенте (Probnoki #27). README — «день-1 на Mac».
 - **✅ Железо (2026-07-15):** Mac Studio M4 Max 64 GB + MacBook Air M5 32 GB на месте.
-- **⏳ Следующий шаг:** `ollama pull` / LM Studio на Studio (`qwen3.6-35b-a3b`,
-  `qwen3guard-gen-4b`); замер latency; vLLM MRv2 + KV-offload; LocalAI P2P Studio↔Air.
+- **✅ LM Studio на Studio (2026-07-17):** `qwen3.6-35b-a3b` + `qwen3guard-gen-4b`,
+  HTTP API `:8000`, launchd автозапуск.
+- **⏳ Следующий шаг:** замер latency; vLLM MRv2 + KV-offload; LocalAI P2P Studio↔Air;
+  Ollama как альтернативный транспорт.
 - **Откуда:** foundation/2026-07-02 (релизы vLLM 0.22–0.24, LocalAI 4.5.x, Ollama 0.30–0.31).
 - **К чему относится:** foundation — слой инференса.
 
@@ -167,9 +173,17 @@
   + опц. re-scan фрагментов. Тесты на фейках + реальном ephemeral ChromaDB (#28).
 - **Откуда:** memory/2026-07-02 (MemSyco-Bench, Bayesian Agentic RAG, Semantic Observability).
 - **К чему относится:** memory — база знаний.
-- **Осталось (⏳):** реальный BGE-M3 эмбеддер + persistent ChromaDB на Mac;
-  полный Bayesian-фреймворк неопределённости и Semantic Observability
+- **✅ BGE-M3 + persistent Chroma на Studio (2026-07-17):** `make_memory_stack`,
+  `serve_lmstudio.py`, vault ingest, smoke `KREPOST-RAG-7742`.
+- **⏳ Осталось:** полный Bayesian-фреймворк неопределённости и Semantic Observability
   (логирование дрейфа эмбеддингов) — расширения поверх текущего сигнала confident.
+
+### EpisodicMemory в боевом цикле  ✅ (сделано 2026-07-17)
+- **Что готово:** `krepost/memory/episodic.py` + `BGEProvider` (общая BGE-модель
+  с RAG, без второй загрузки); `record_episode` в Orchestrator и ToolAgent после
+  каждого ответа; RED/YELLOW → quarantine; `KREPOST_ENABLE_EPISODIC=1` (дефолт on);
+  persist `data/memory/`. Probnoki #52 (quarantine).
+- **Next:** MemoryRouter (Phase 3), Ataker на Air, Telegram-алерты — позже.
 
 ### Контекстная инженерия для слабых локальных моделей  ✅ (в составе RAG-слоя)
 - **Что готово:** relevance threshold + ранжирование по score + фильтрация

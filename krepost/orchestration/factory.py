@@ -181,6 +181,7 @@ def build_openai_orchestrator(
     guard_model: str = DEFAULT_OPENAI_GUARD_MODEL,
     memory_store: Optional[Any] = None,
     vault_name: str = "Krepost",
+    episodic_memory: Optional[Any] = None,
 ) -> Orchestrator:
     api_key = _resolve_openai_api_key(api_key)
     pipeline, transport = build_openai_pipeline(
@@ -191,7 +192,12 @@ def build_openai_orchestrator(
     backend = OpenAIBackend(main_model, base_url=base_url, api_key=api_key,
                             transport=transport, options=options)
     router = Router(list(routes or []), default=Route("main", backend))
-    return Orchestrator(pipeline, router, memory_store=memory_store, vault_name=vault_name)
+    return Orchestrator(
+        pipeline, router,
+        memory_store=memory_store,
+        vault_name=vault_name,
+        episodic_memory=episodic_memory,
+    )
 
 
 def build_openai_orchestrator_with_memory(
@@ -229,6 +235,7 @@ def build_openai_agent(
     options: Optional[dict] = None,
     max_iters: int = 6,
     guard_model: str = DEFAULT_OPENAI_GUARD_MODEL,
+    episodic_memory: Optional[Any] = None,
 ) -> ToolAgent:
     api_key = _resolve_openai_api_key(api_key)
     pipeline, transport = build_openai_pipeline(
@@ -238,7 +245,10 @@ def build_openai_agent(
     )
     backend = OpenAIBackend(main_model, base_url=base_url, api_key=api_key,
                             transport=transport, options=options)
-    return ToolAgent(pipeline, backend, ToolRegistry(tools), max_iters=max_iters)
+    return ToolAgent(
+        pipeline, backend, ToolRegistry(tools), max_iters=max_iters,
+        episodic_memory=episodic_memory,
+    )
 
 
 def build_openai_agent_with_harness(

@@ -22,10 +22,12 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
+from krepost.memory.episode_hook import record_episode
 from krepost.prompts.assistant import build_rag_messages
 from krepost.security.pipeline import SecurityContext, Verdict
 
 if TYPE_CHECKING:
+    from krepost.memory.episodic import EpisodicMemory
     from krepost.memory.store import MemoryStore
     from krepost.orchestration.router import Router
     from krepost.security.pipeline import SecurityPipeline
@@ -77,6 +79,7 @@ class Orchestrator:
         error_message: str = DEFAULT_ERROR_MESSAGE,
         memory_store: Optional["MemoryStore"] = None,
         vault_name: str = "Krepost",
+        episodic_memory: Optional["EpisodicMemory"] = None,
     ):
         self.pipeline = pipeline
         self.router = router
@@ -84,6 +87,17 @@ class Orchestrator:
         self.error_message = error_message
         self.memory_store = memory_store
         self.vault_name = vault_name
+        self.episodic_memory = episodic_memory
+
+    async def _record(self, text: str, result: OrchestrationResult) -> None:
+        await record_episode(
+            self.episodic_memory,
+            query=text,
+            response=result.output,
+            session_id=result.session_id,
+            verdict=result.verdict,
+            status=result.status,
+        )
 
     async def handle(self, text: str, session_id: str) -> OrchestrationResult:
         start = time.perf_counter()
@@ -93,7 +107,7 @@ class Orchestrator:
 
         if in_ctx.is_compromised:
             # Жёсткий fail-closed: генерации нет вообще.
-            return OrchestrationResult(
+            result = OrchestrationResult(
                 session_id=session_id,
                 status="blocked_input",
                 verdict=in_ctx.verdict,
@@ -105,6 +119,8 @@ class Orchestrator:
                 latency_ms=(time.perf_counter() - start) * 1000,
                 metadata={"trusted": in_ctx.metadata.get("trusted", False)},
             )
+            await self._record(text, result)
+            return result
 
         # ── Маршрутизация ───────────────────────────────────────────────
         route = self.router.select(in_ctx)
@@ -144,7 +160,7 @@ class Orchestrator:
         except Exception as e:
             # Инфраструктурный сбой бэкенда — мягкая деградация, не атака.
             logger.error(f"backend {route.name!r} generate failed: {type(e).__name__}: {e}")
-            return OrchestrationResult(
+            result = OrchestrationResult(
                 session_id=session_id,
                 status="backend_error",
                 verdict=in_ctx.verdict,
@@ -155,6 +171,8 @@ class Orchestrator:
                 latency_ms=(time.perf_counter() - start) * 1000,
                 metadata={"error": type(e).__name__, **rag_meta},
             )
+            await self._record(text, result)
+            return result
 
         # ── Выход: Layer 4 (свежий контекст, как ожидает process_output) ─
         out_ctx = SecurityContext(session_id=session_id, user_input=text)
@@ -162,7 +180,7 @@ class Orchestrator:
         out_ctx = await self.pipeline.process_output(out_ctx)
 
         blocked_out = out_ctx.is_compromised
-        return OrchestrationResult(
+        result = OrchestrationResult(
             session_id=session_id,
             status="blocked_output" if blocked_out else "ok",
             verdict=out_ctx.verdict if blocked_out else in_ctx.verdict,
@@ -175,3 +193,5 @@ class Orchestrator:
             latency_ms=(time.perf_counter() - start) * 1000,
             metadata={"trusted": in_ctx.metadata.get("trusted", False), **rag_meta},
         )
+        await self._record(text, result)
+        return result

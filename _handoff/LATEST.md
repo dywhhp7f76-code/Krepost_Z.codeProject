@@ -9,6 +9,18 @@
 
 ---
 
+- feat(episodic+ops): BGEProvider + EpisodicMemory wired in Orchestrator/ToolAgent/serve_lmstudio (KREPOST_ENABLE_EPISODIC=1), episode_hook fail-open, Probnoki #52 quarantine; scripts/install_launchd_studio.sh (com.hervam.krepost.serve); ROADMAP Studio live stack; rsync+smoke on Mac Studio.
+- Коммит: (ожидает push)
+- Проверка: .venv/bin/python -m pytest Probnoki/test_52_episodic_quarantine.py -q → 3 passed; curl Studio :8000/health; /v1/query benign; /v1/agent vault_read KREPOST-RAG-7742.
+
+---
+
+- feat(harness): agent tools + /v1/agent over LM Studio — fetch_url, memory_search, vault_read; build_default_harness_tools; serve_lmstudio ENABLE_AGENT=1.
+- Коммит: 765fbe9
+- Проверка: smoke agent vault_read → KREPOST-RAG-7742.
+
+---
+
 - feat(A1+A2+C): vault bootstrap (48 leaves + 00-INDEX + RAG_SMOKE_TEST), RAG wiring (BGE-M3 + persistent Chroma cosine + MemoryStore in orchestrator + ingest_vault.py + serve_lmstudio with memory), FewShot embed timeout 15s, proposals 05/08 approved, EpisodicMemory port → krepost/memory/episodic.py.
 - Коммит: (не закоммичено — по указанию оператора)
 - Проверка: .venv/bin/python scripts/bootstrap_vault.py → vault ready: 48 leaves; .venv/bin/python -m pytest tests/ Probnoki/ -q → 744 passed, 1 skipped (после фикса test_29 guard_model + test_fewshot timeout).
