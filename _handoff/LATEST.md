@@ -9,6 +9,12 @@
 
 ---
 
+- docs(ROADMAP): разведка 2026-07-16 — сводная таблица СЕЙЧАС/СКОРО/ПОТОМ/НЕ БРАТЬ с обязательным этапом (Phase 3 MemoryRouter, HealthClaw induction, RELAI gate, Ataker evals, …); Phase 3 помечен 🔜 следующая волна.
+- Коммит: 08ea93d
+- Проверка: секция «Разведданные 2026-07-16» в ROADMAP.md.
+
+---
+
 - feat(episodic+ops): BGEProvider + EpisodicMemory wired in Orchestrator/ToolAgent/serve_lmstudio (KREPOST_ENABLE_EPISODIC=1), episode_hook fail-open, Probnoki #52 quarantine; scripts/install_launchd_studio.sh (com.hervam.krepost.serve); ROADMAP Studio live stack; rsync+smoke on Mac Studio.
 - Коммит: (ожидает push)
 - Проверка: .venv/bin/python -m pytest Probnoki/test_52_episodic_quarantine.py -q → 3 passed; curl Studio :8000/health; /v1/query benign; /v1/agent vault_read KREPOST-RAG-7742.
