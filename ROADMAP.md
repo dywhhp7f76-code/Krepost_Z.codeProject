@@ -137,6 +137,9 @@
 - **Done-check PR:** в diff обязаны быть эти ID; один `retrieve`/MemoryRouter
   Phase 4 не закрывает.
 - **Кирпичи:** HybridRetriever (vector+BM25+rerank); живой `metadata.domain`.
+- **✅ Hybrid scaffold (2026-07-18):** `krepost/memory/hybrid.py` (BM25+RRF),
+  флаг `KREPOST_ENABLE_HYBRID=1` в MemoryRouter; Probnoki #55. CrossEncoder rerank —
+  опционально. DomainScout/EvidenceGrader — ещё нет (Phase 4).
 - **Связь:** Phase 3 = [_handoff/MEMORY_ROUTER_SPEC.md](_handoff/MEMORY_ROUTER_SPEC.md).
 
 ### RAG поверх Obsidian с контролем надёжности  ✅ (сделано 2026-07-02)

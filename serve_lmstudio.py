@@ -54,6 +54,9 @@ ENABLE_MEMORY_ROUTER = os.environ.get("KREPOST_ENABLE_MEMORY_ROUTER", "1").lower
 USE_RERANKER_CE = os.environ.get("KREPOST_RERANKER_CROSS_ENCODER", "0").lower() not in (
     "0", "false", "no", "off",
 )
+ENABLE_HYBRID = os.environ.get("KREPOST_ENABLE_HYBRID", "1").lower() not in (
+    "0", "false", "no", "off",
+)
 VAULT = Path(os.environ.get("KREPOST_VAULT", "vault"))
 CHROMA_DIR = env_chroma_dir()
 EPISODIC_DIR = Path(os.environ.get("KREPOST_EPISODIC_DIR", "data/memory"))
@@ -69,7 +72,9 @@ if ENABLE_MEMORY or ENABLE_AGENT:
         from krepost.memory.memory_router import wrap_memory_store
 
         memory_store = wrap_memory_store(
-            memory_store, use_cross_encoder=USE_RERANKER_CE,
+            memory_store,
+            use_cross_encoder=USE_RERANKER_CE,
+            use_hybrid=ENABLE_HYBRID,
         )
     client = make_chroma_client(CHROMA_DIR)
     fewshot_col = make_fewshot_collection(client)
@@ -117,6 +122,8 @@ if ENABLE_MEMORY:
     title_bits.append("+ memory")
 if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER:
     title_bits.append("+ MemoryRouter")
+if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER and ENABLE_HYBRID:
+    title_bits.append("+ hybrid")
 if occ_reader is not None:
     title_bits.append("+ OCC-reader")
 if ENABLE_EPISODIC and episodic_memory is not None:

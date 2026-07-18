@@ -45,6 +45,7 @@ class MemoryRouter:
         per_domain_k: int = 5,
         top_n: int = 5,
         fallback_flat: bool = True,
+        hybrid: Optional[Any] = None,
     ):
         self.store = store
         self.domain_router = domain_router
@@ -52,6 +53,7 @@ class MemoryRouter:
         self.per_domain_k = per_domain_k
         self.top_n = top_n
         self.fallback_flat = fallback_flat
+        self.hybrid = hybrid  # HybridRetriever | None — vector+BM25+RRF
         self.last_trace: Optional[RouteTrace] = None
 
     @property
@@ -72,7 +74,8 @@ class MemoryRouter:
 
         async def _one(did: str) -> RetrievalResult:
             try:
-                return await self.store.retrieve(
+                retriever = self.hybrid if self.hybrid is not None else self.store
+                return await retriever.retrieve(
                     query,
                     k=self.per_domain_k,
                     where={"domain": did},
@@ -157,8 +160,15 @@ def wrap_memory_store(
     max_domains: int = 3,
     top_n: int = 5,
     per_domain_k: int = 5,
+    use_hybrid: bool = False,
 ) -> MemoryRouter:
     from krepost.memory.reranker import make_default_reranker
+
+    hybrid = None
+    if use_hybrid:
+        from krepost.memory.hybrid import HybridRetriever
+
+        hybrid = HybridRetriever(store, top_n=top_n, vector_k=per_domain_k, bm25_k=per_domain_k)
 
     return MemoryRouter(
         store,
@@ -166,4 +176,5 @@ def wrap_memory_store(
         make_default_reranker(use_cross_encoder=use_cross_encoder),
         per_domain_k=per_domain_k,
         top_n=top_n,
+        hybrid=hybrid,
     )
