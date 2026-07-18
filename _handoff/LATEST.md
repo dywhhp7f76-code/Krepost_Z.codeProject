@@ -10,7 +10,7 @@
 ---
 
 - docs(canon): HierarchicalDomainRAG — Supervisor/SearchBrief/DomainScout/ContextReader/EvidenceGrader; anti-patterns; ROADMAP Phase 4; redirect с LIBRARY_JURISDICTIONS_SPEC.
-- Коммит: (ожидает)
+- Коммит: d240af7
 - Проверка: `_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md` + Phase 4 в ROADMAP.md.
 
 ---
