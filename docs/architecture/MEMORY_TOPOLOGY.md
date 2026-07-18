@@ -77,5 +77,7 @@ MacBook Air (клиент)                     Mac Studio (дом памяти)
 
 - **Phase 3 (MemoryRouter):** доменные индексы — это подпапки `vault/`, все на
   Studio; роутер/reranker тоже на Studio (лёгкие), основная модель — последняя.
-- **Phase 4 (агенты-хранители):** агенты живут на Studio рядом со своими
-  доменами; MacBook по-прежнему только клиент. См. ROADMAP «Phase 4».
+- **Phase 4 (`HierarchicalDomainRAG`):** DomainScout[] + ContextReader[] +
+  EvidenceGrader под Supervisor — канон
+  [`_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md`](../../_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md).
+  На Studio; MacBook — клиент. Не путать с Phase 3 (DomainRouter only).

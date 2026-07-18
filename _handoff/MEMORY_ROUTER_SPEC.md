@@ -2,8 +2,13 @@
 
 > **Статус:** scaffold ✅ (`krepost/memory/memory_router.py` + DomainRouter +
 > ScoreReranker). Врезка в `serve_lmstudio` за флагом
-> `KREPOST_ENABLE_MEMORY_ROUTER`. Бой на Studio — после re-ingest vault
-> с `metadata.domain`. CrossEncoder reranker — опционально.
+> `KREPOST_ENABLE_MEMORY_ROUTER`. Бой на Studio — после re-ingest / миграции
+> `metadata.domain`. CrossEncoder reranker — опционально.
+>
+> **ВАЖНО:** этот файл — только **Phase 3 (фундамент доменов)**.
+> Канон Phase 4: [_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md](HIERARCHICAL_DOMAIN_RAG_SPEC.md)
+> (`Supervisor → DomainScout[] → ContextReader[] → EvidenceGrader`).
+> Phase 3 router+retrieve **не** закрывает Phase 4.
 
 ## Цель
 

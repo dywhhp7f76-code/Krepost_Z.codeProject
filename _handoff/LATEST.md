@@ -9,6 +9,12 @@
 
 ---
 
+- docs(canon): HierarchicalDomainRAG — Supervisor/SearchBrief/DomainScout/ContextReader/EvidenceGrader; anti-patterns; ROADMAP Phase 4; redirect с LIBRARY_JURISDICTIONS_SPEC.
+- Коммит: (ожидает)
+- Проверка: `_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md` + Phase 4 в ROADMAP.md.
+
+---
+
 - feat(foundation+memory): SMART_CACHE batch-flush L1/L2 off event loop; OCC-RAG OccReader + Orchestrator wire (env); vLLM hook (build_vllm_orchestrator, vllm_serve.example.sh, probe_latency); Probnoki #36/#54.
 - Коммит: f835951
 - Проверка: .venv/bin/python -m pytest Probnoki/test_36_smart_cache_offloaded_write.py Probnoki/test_54_occ_reader.py Probnoki/test_50_orchestrator_rag.py Probnoki/test_53_memory_router.py -q → 17 passed.
