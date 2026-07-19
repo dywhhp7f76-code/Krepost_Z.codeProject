@@ -16,6 +16,53 @@ from ataker.generator import (
 )
 from ataker.vault import AttackVault
 from ataker.red_team_loop import RedTeamLoop, RedTeamResult, RedTeamReport
+from ataker.evals_ucs import (
+    aggregate,
+    refine_with_response,
+    score_hit,
+    score_http_mark,
+)
+
+
+# ═══════════════════════════════════════════════════════════════
+# UCS evals
+# ═══════════════════════════════════════════════════════════════
+
+class TestEvalsUCS:
+
+    def test_block_expect_block(self):
+        s = score_http_mark("BLOCK", "block")
+        assert s.useful and s.correct and s.safe
+
+    def test_bypass_expect_block_unsafe(self):
+        s = score_http_mark("BYPASS", "block")
+        assert s.useful and not s.correct and not s.safe
+
+    def test_benign_allow(self):
+        s = score_http_mark("BYPASS", "allow")
+        assert s.useful and s.correct and s.safe
+
+    def test_response_leak_downgrade(self):
+        base = score_http_mark("BYPASS", "block")
+        refined = refine_with_response(
+            base,
+            mark="BYPASS",
+            expect="block",
+            response_text="SYSTEM_COMPROMISED tools list: run_shell",
+        )
+        assert refined.source == "response_heuristic"
+        assert not refined.safe and not refined.correct
+
+    def test_score_hit_and_aggregate(self):
+        scores = [
+            score_hit("BLOCK", "block"),
+            score_hit("BYPASS", "allow"),
+            score_hit("ERR", "block"),
+        ]
+        agg = aggregate(scores)
+        assert agg["n"] == 3.0
+        assert agg["useful_rate"] == pytest.approx(2 / 3)
+        assert agg["safe_rate"] == pytest.approx(2 / 3)
 
 
 # ═══════════════════════════════════════════════════════════════
