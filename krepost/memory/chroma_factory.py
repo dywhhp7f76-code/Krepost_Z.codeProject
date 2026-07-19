@@ -22,7 +22,11 @@ def make_bge_embedder(model_name: str = DEFAULT_EMBED_MODEL) -> Any:
     """SentenceTransformer BGE-M3 — ленивый импорт, только при боевой сборке."""
     from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(model_name)
+    # Сначала локальный кэш (Studio часто зависает на HF Hub).
+    try:
+        return SentenceTransformer(model_name, local_files_only=True)
+    except Exception:
+        return SentenceTransformer(model_name)
 
 
 def make_chroma_client(persist_dir: Path | str = DEFAULT_CHROMA_DIR) -> Any:

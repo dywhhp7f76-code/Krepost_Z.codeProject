@@ -51,6 +51,12 @@ cat > "${PLIST}" <<EOF
     <string>qwen3guard-gen-4b</string>
     <key>KREPOST_LMSTUDIO_URL</key>
     <string>http://127.0.0.1:1234/v1</string>
+    <key>HF_HUB_OFFLINE</key>
+    <string>1</string>
+    <key>TRANSFORMERS_OFFLINE</key>
+    <string>1</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/bin:/bin</string>
   </dict>
