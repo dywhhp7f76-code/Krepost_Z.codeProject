@@ -139,6 +139,15 @@ class Orchestrator:
                     "rag_top_score": retrieval.top_score,
                     "rag_confident": retrieval.confident,
                 }
+                # Phase 4: HierarchicalTrace → metadata (если facade)
+                last_trace = getattr(self.memory_store, "last_trace", None)
+                if last_trace is not None:
+                    try:
+                        from krepost.memory.hierarchical_rag import trace_to_meta
+
+                        rag_meta.update(trace_to_meta(last_trace))
+                    except Exception as te:  # pragma: no cover
+                        rag_meta["hierarchical_meta_error"] = type(te).__name__
                 if not retrieval.empty:
                     blocks = [
                         {

@@ -14,7 +14,13 @@ serve_lmstudio.py — БОЕВОЙ HTTP-сервер Крепости повер
     KREPOST_ENABLE_MEMORY_ROUTER=1 \\
       uvicorn serve_lmstudio:app --host 0.0.0.0 --port 8000
 
-MemoryRouter (Phase 3): domain route → per-domain retrieve → ScoreReranker.
+Phase 3 MemoryRouter: domain route → per-domain retrieve → ScoreReranker.
+Phase 4 HierarchicalDomainRAG (opt-in):
+    KREPOST_ENABLE_HIERARCHICAL_RAG=1
+    → DomainRouter → SearchBrief → DomainScout[] → ContextReader[] →
+      EvidenceGrader → loop → Supervisor (main LLM).
+    При Hierarchical=1 MemoryRouter-обёртка не ставится (Phase 4 путь выше).
+
 CrossEncoder: KREPOST_RERANKER_CROSS_ENCODER=1 (тяжёлый, по умолчанию off).
 После включения — переиндексировать vault (metadata.domain): python ingest_vault.py
 """
@@ -51,6 +57,9 @@ ENABLE_EPISODIC = os.environ.get("KREPOST_ENABLE_EPISODIC", "1").lower() not in 
 ENABLE_MEMORY_ROUTER = os.environ.get("KREPOST_ENABLE_MEMORY_ROUTER", "1").lower() not in (
     "0", "false", "no", "off",
 )
+ENABLE_HIERARCHICAL = os.environ.get(
+    "KREPOST_ENABLE_HIERARCHICAL_RAG", "0"
+).lower() not in ("0", "false", "no", "off")
 USE_RERANKER_CE = os.environ.get("KREPOST_RERANKER_CROSS_ENCODER", "0").lower() not in (
     "0", "false", "no", "off",
 )
@@ -68,7 +77,14 @@ episodic_memory = None
 
 if ENABLE_MEMORY or ENABLE_AGENT:
     embedder, _mem_col, memory_store = make_memory_stack(chroma_dir=CHROMA_DIR)
-    if ENABLE_MEMORY_ROUTER and memory_store is not None:
+    if memory_store is not None and ENABLE_HIERARCHICAL:
+        from krepost.memory.hierarchical_rag import wrap_hierarchical_memory
+
+        memory_store = wrap_hierarchical_memory(
+            memory_store,
+            use_hybrid=ENABLE_HYBRID,
+        )
+    elif ENABLE_MEMORY_ROUTER and memory_store is not None:
         from krepost.memory.memory_router import wrap_memory_store
 
         memory_store = wrap_memory_store(
@@ -101,6 +117,26 @@ orchestrator = build_openai_orchestrator(
     occ_reader=occ_reader,
 )
 
+# Supervisor (main LLM) пишет SearchBrief + refine в loop
+if (
+    ENABLE_HIERARCHICAL
+    and memory_store is not None
+    and hasattr(memory_store, "set_supervisor_backend")
+):
+    try:
+        _sup_backend = orchestrator.router.default.backend
+        memory_store.set_supervisor_backend(_sup_backend)
+    except Exception:  # pragma: no cover
+        pass
+# ContextReader ← OccReader (если включён OCC)
+if (
+    ENABLE_HIERARCHICAL
+    and occ_reader is not None
+    and memory_store is not None
+    and hasattr(memory_store, "set_occ_reader")
+):
+    memory_store.set_occ_reader(occ_reader)
+
 agent = None
 if ENABLE_AGENT:
     tools = build_default_harness_tools(
@@ -120,9 +156,13 @@ if ENABLE_AGENT:
 title_bits = ["Krepost API (LM Studio"]
 if ENABLE_MEMORY:
     title_bits.append("+ memory")
-if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER:
+if ENABLE_MEMORY and ENABLE_HIERARCHICAL:
+    title_bits.append("+ HierarchicalDomainRAG")
+    if memory_store is not None and getattr(memory_store, "brief_drafter", None):
+        title_bits.append("+ SupervisorBrief")
+elif ENABLE_MEMORY and ENABLE_MEMORY_ROUTER:
     title_bits.append("+ MemoryRouter")
-if ENABLE_MEMORY and ENABLE_MEMORY_ROUTER and ENABLE_HYBRID:
+if ENABLE_MEMORY and ENABLE_HYBRID:
     title_bits.append("+ hybrid")
 if occ_reader is not None:
     title_bits.append("+ OCC-reader")

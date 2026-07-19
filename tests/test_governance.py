@@ -82,12 +82,23 @@ class TestImprovementGate:
         gate.submit(sample_proposal)
         assert not gate.is_approved("test-01")
 
-    def test_mark_integrated(self, gate, sample_proposal):
+    def test_mark_integrated_requires_relai(self, gate, sample_proposal):
         gate.submit(sample_proposal)
         gate.approve("test-01")
-        gate.mark_integrated("test-01")
-        p = gate.get_proposal("test-01")
-        assert p.status == ProposalStatus.INTEGRATED
+        # без регресс-набора — BLOCKED (RELAI)
+        assert not gate.mark_integrated("test-01")
+        assert gate.get_proposal("test-01").status == ProposalStatus.APPROVED
+        # с зелёным suite — ok
+        assert gate.mark_integrated(
+            "test-01", regression_suite_passed=True, suite_name="probniki"
+        )
+        assert gate.get_proposal("test-01").status == ProposalStatus.INTEGRATED
+
+    def test_mark_integrated_operator_override(self, gate, sample_proposal):
+        gate.submit(sample_proposal)
+        gate.approve("test-01")
+        assert gate.mark_integrated("test-01", operator_override=True)
+        assert gate.get_proposal("test-01").status == ProposalStatus.INTEGRATED
 
     def test_list_pending(self, gate):
         for i in range(3):

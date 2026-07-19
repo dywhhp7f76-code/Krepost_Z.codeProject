@@ -9,6 +9,56 @@
 
 ---
 
+- feat(Phase4+ops): HierarchicalDomainRAG в serve (SupervisorBrief, DomainScout,
+  ContextReader, EvidenceGrader); RELAI в `ImprovementGate.mark_integrated`;
+  launchd Studio env (router/hybrid/hierarchical/models); Крепость≠зоопарк;
+  Probnoki #56/#57; sandbox/ataker scripts.
+- Коммит: (этот)
+- Проверка: pytest Probnoki/test_56 Probnoki/test_57 tests/test_governance.py; Studio smoke 7742.
+
+---
+
+- ops(canon): «Крепость» ≠ зоопарк — только Studio `:8000` + её модели; Air `:8010` = зоопарк/песочница по явной команде. Зафиксировано в `SANDBOX_ZOO_AIR.md`.
+- Коммит: (в составе Phase4 commit)
+- Проверка: smoke Studio `KREPOST-RAG-7742` → ok + HierarchicalDomainRAG в title.
+
+---
+
+- feat(Phase4+ops): HierarchicalTrace→rag_meta; ContextReader+OccReader async pool;
+  `scripts/ataker_hit_http.py` + `ataker_sandbox_air.sh` (:8010, блок Studio :8000);
+  Probnoki #57.
+- Коммит: (ожидает оператора)
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_57_hierarchical_meta_and_occ_reader.py Probnoki/test_56_hierarchical_domain_rag.py -q`
+
+---
+
+- feat(Phase4): SupervisorBriefDrafter — main LLM пишет/refine SearchBrief;
+  wired via `set_supervisor_backend` in serve_lmstudio; fail-open heuristic; Probnoki #56.
+- Коммит: (ожидает оператора)
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_56_hierarchical_domain_rag.py -q`
+
+---
+
+- feat(Phase4): HierarchicalDomainRAG wired in `serve_lmstudio` —
+  `KREPOST_ENABLE_HIERARCHICAL_RAG=1` → HierarchicalMemoryFacade; sandbox Air default ON;
+  Probnoki #56 (+ facade/draft brief).
+- Коммит: (ожидает оператора)
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_56_hierarchical_domain_rag.py -q`
+
+---
+
+- feat(Phase4+ops): HierarchicalDomainRAG scaffold — SearchBrief, DomainScout, ContextReader, EvidenceGrader, loop; `scripts/serve_sandbox_air.sh` (Air :8010); Probnoki #56.
+- Коммит: (ожидает оператора)
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_56_hierarchical_domain_rag.py -q`
+
+---
+
+- docs(ops): договорённость зоопарк/песочница на Air — `_handoff/SANDBOX_ZOO_AIR.md` (порт 8010, sandbox data/, Ataker→localhost, Studio не трогать).
+- Коммит: (не коммитили — оператор ушёл спать)
+- Проверка: файл SANDBOX_ZOO_AIR.md на диске.
+
+---
+
 - docs(canon): HierarchicalDomainRAG — Supervisor/SearchBrief/DomainScout/ContextReader/EvidenceGrader; anti-patterns; ROADMAP Phase 4; redirect с LIBRARY_JURISDICTIONS_SPEC.
 - Коммит: d240af7
 - Проверка: `_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md` + Phase 4 в ROADMAP.md.

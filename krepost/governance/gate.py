@@ -136,9 +136,43 @@ class ImprovementGate:
     def request_revision(self, proposal_id: str, comment: str = "") -> bool:
         return self._set_status(proposal_id, ProposalStatus.REVISION, comment)
 
-    def mark_integrated(self, proposal_id: str) -> bool:
-        return self._set_status(proposal_id, ProposalStatus.INTEGRATED,
-                                "Интегрировано в основную систему")
+    def mark_integrated(
+        self,
+        proposal_id: str,
+        *,
+        regression_suite_passed: bool = False,
+        suite_name: Optional[str] = None,
+        operator_override: bool = False,
+    ) -> bool:
+        """Интеграция в основную систему — только APPROVED + RELAI green.
+
+        Auto-RSI / auto-apply без зелёного регресс-набора запрещены
+        (`allows_auto_rsi`). operator_override — только явный человек.
+        """
+        from krepost.governance.relai import allows_auto_rsi
+
+        if not self.is_approved(proposal_id):
+            logger.warning(
+                f"[GATE] {proposal_id}: integrate BLOCKED — не APPROVED"
+            )
+            return False
+
+        relai = allows_auto_rsi(
+            regression_suite_passed=regression_suite_passed,
+            suite_name=suite_name,
+            operator_override=operator_override,
+        )
+        if not relai.allowed:
+            logger.warning(
+                f"[GATE] {proposal_id}: integrate BLOCKED by RELAI — {relai.reason}"
+            )
+            return False
+
+        return self._set_status(
+            proposal_id,
+            ProposalStatus.INTEGRATED,
+            f"Интегрировано ({relai.reason})",
+        )
 
     def is_approved(self, proposal_id: str) -> bool:
         with sqlite3.connect(self._db_path) as conn:

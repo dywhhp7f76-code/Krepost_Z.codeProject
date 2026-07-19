@@ -114,33 +114,34 @@
 
 ## 🧠 memory
 
-### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  ✅ scaffold
-- **Статус:** ✅ код scaffold: `DomainRouter` → per-domain retrieve (`metadata.domain`)
-  → `ScoreReranker` → LLM; обёртка `MemoryRouter` в `serve_lmstudio`
+### Phase 3 — MemoryRouter: многослойная память (роутер→retrieval→reranker→LLM)  ✅ live Studio
+- **Статус:** ✅ код + бой на Studio: `DomainRouter` → per-domain retrieve
+  (`metadata.domain`) → `ScoreReranker` → LLM; `serve_lmstudio`
   (`KREPOST_ENABLE_MEMORY_ROUTER=1`). CrossEncoder — флаг
   `KREPOST_RERANKER_CROSS_ENCODER` (по умолчанию off). Probnoki #53.
-- **Хвост до боя на Studio:** re-ingest vault (`ingest_vault.py` пишет `domain`) +
-  rsync/рестарт API. Без re-ingest — flat fallback.
-- **Этап:** **memory / Phase 3** — scaffold готов; бой на Studio — следующий шаг.
+- **Studio:** vault ingest/backfill с `metadata.domain` сделан; без domain —
+  flat fallback.
 - **Зависимости:** ✅ Studio live (API+RAG+agent+episodic).
 - **Усиление из разведки 2026-07-16:** domain-routed RAG (Habr/LangGraph) —
   роутер по доменам знаний вместо naive flat retrieval; см. секцию
   «Разведданные 2026-07-16» ниже.
 - **Детали:** [_handoff/MEMORY_ROUTER_SPEC.md](_handoff/MEMORY_ROUTER_SPEC.md)
 
-### Phase 4 — HierarchicalDomainRAG  ⏳ КАНОН LOCKED
-- **Статус:** канон оператора + freeze ID. Кода нет. Phase 3 ≠ Phase 4.
-- **КАНОН (не пересказывать):** [_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md](_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md)
+### Phase 4 — HierarchicalDomainRAG  ✅ scaffold + Studio live
+- **Статус:** канон LOCKED + код + `serve_lmstudio` + бой Studio
+  (`KREPOST_ENABLE_HIERARCHICAL_RAG=1`). Phase 3 ≠ Phase 4.
+- **Крепость ≠ зоопарк:** проверка/бой только Studio `:8000` + модели Studio.
+  Air `:8010` — зоопарк/песочница по явной команде (`_handoff/SANDBOX_ZOO_AIR.md`).
+- **КАНОН:** [_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md](_handoff/HIERARCHICAL_DOMAIN_RAG_SPEC.md)
 - **LOCKED IDs:** `Supervisor` → `SearchBrief` → `DomainScout[]` →
-  `ContextReader[]` → `EvidenceGrader` → loop. Переименовывать / «по сути то же»
-  без `Разрешаю переписать канон HierarchicalDomainRAG` — **запрещено**.
-- **Done-check PR:** в diff обязаны быть эти ID; один `retrieve`/MemoryRouter
-  Phase 4 не закрывает.
-- **Кирпичи:** HybridRetriever (vector+BM25+rerank); живой `metadata.domain`.
-- **✅ Hybrid scaffold (2026-07-18):** `krepost/memory/hybrid.py` (BM25+RRF),
-  флаг `KREPOST_ENABLE_HYBRID=1` в MemoryRouter; Probnoki #55. CrossEncoder rerank —
-  опционально. DomainScout/EvidenceGrader — ещё нет (Phase 4).
+  `ContextReader[]` → `EvidenceGrader` → loop.
+- **✅ Hybrid:** `hybrid.py` BM25+RRF; Probnoki #55.
+- **✅ Phase 4:** `search_brief` / `domain_scout` / `context_reader` /
+  `evidence_grader` / `hierarchical_rag` / `supervisor_brief`; Probnoki #56/#57.
+  Metadata `/v1/query` → `diagnostics.SearchBrief` + `EvidenceGrader`.
 - **Связь:** Phase 3 = [_handoff/MEMORY_ROUTER_SPEC.md](_handoff/MEMORY_ROUTER_SPEC.md).
+- **Next:** HealthClaw induction; RELAI verifier suite (gate уже дергает
+  `allows_auto_rsi` на `mark_integrated`); реальные Ataker seeds.
 
 ### RAG поверх Obsidian с контролем надёжности  ✅ (сделано 2026-07-02)
 - **Что готово:** `krepost/memory/` — `MemoryStore` (embedder + ChromaDB,

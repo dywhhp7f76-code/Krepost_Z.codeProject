@@ -238,8 +238,11 @@ def build_openai_orchestrator_with_memory(
     if enable_memory_router:
         from krepost.memory.memory_router import wrap_memory_store
 
+        use_hybrid = bool(kwargs.pop("use_hybrid", True))
         memory_store = wrap_memory_store(
-            memory_store, use_cross_encoder=use_cross_encoder,
+            memory_store,
+            use_cross_encoder=use_cross_encoder,
+            use_hybrid=use_hybrid,
         )
     client = make_chroma_client(chroma_dir)
     fewshot_col = make_fewshot_collection(client, fewshot_collection)
