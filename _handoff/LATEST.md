@@ -9,6 +9,13 @@
 
 ---
 
+- feat(memory): HealthClaw induction scaffold — profile/procedure/keep/discard
+  в `record_episode`; Probnoki #58; launchd `KREPOST_ENABLE_HEALTHCLAW`.
+- Коммит: 3980a24
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_58_healthclaw_induction.py -q` → 4 passed.
+
+---
+
 - feat(Phase4+ops): HierarchicalDomainRAG в serve (SupervisorBrief, DomainScout,
   ContextReader, EvidenceGrader); RELAI в `ImprovementGate.mark_integrated`;
   launchd Studio env (router/hybrid/hierarchical/models); Крепость≠зоопарк;
