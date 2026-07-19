@@ -13,7 +13,7 @@
   ContextReader, EvidenceGrader); RELAI в `ImprovementGate.mark_integrated`;
   launchd Studio env (router/hybrid/hierarchical/models); Крепость≠зоопарк;
   Probnoki #56/#57; sandbox/ataker scripts.
-- Коммит: (этот)
+- Коммит: bd988eb
 - Проверка: pytest Probnoki/test_56 Probnoki/test_57 tests/test_governance.py; Studio smoke 7742.
 
 ---
