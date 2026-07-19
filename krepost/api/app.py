@@ -18,11 +18,15 @@ HTTP-обвязка поверх Orchestrator — точка входа серв
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
+
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+_CHAT_HTML = _STATIC_DIR / "chat.html"
 
 from krepost.api.alerts import AlertDispatcher, format_prometheus_metrics
 from krepost.orchestration.orchestrator import Orchestrator, OrchestrationResult
@@ -163,7 +167,20 @@ def create_app(
             "tools": (
                 [t["name"] for t in agent.registry.specs()] if agent is not None else []
             ),
+            "chat": "/chat",
         }
+
+    @app.get("/")
+    @app.get("/chat")
+    async def chat_ui():
+        """Удобный чат оператора с Крепостью (тот же origin, что /v1/query)."""
+        if not _CHAT_HTML.is_file():
+            return PlainTextResponse("chat UI missing", status_code=404)
+        return FileResponse(
+            _CHAT_HTML,
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/metrics")
     async def metrics():

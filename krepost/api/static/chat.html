@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Крепость</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg0: #12151a;
+      --bg1: #1a1f27;
+      --ink: #e8e2d6;
+      --muted: #9a9286;
+      --brass: #c4a35a;
+      --brass-dim: #8a7340;
+      --line: rgba(196, 163, 90, 0.22);
+      --user: #243041;
+      --bot: #1c222c;
+      --danger: #c45a5a;
+      --ok: #6a9b6a;
+      --radius: 14px;
+      --font: "Manrope", system-ui, sans-serif;
+      --display: "Literata", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(196,163,90,.12), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(60,90,120,.18), transparent 50%),
+        linear-gradient(165deg, var(--bg0), #0e1116 55%, var(--bg1));
+      background-attachment: fixed;
+    }
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100dvh;
+    }
+    header {
+      padding: 1.1rem 1.25rem 0.85rem;
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+      background: rgba(18, 21, 26, 0.55);
+      animation: rise .5s ease-out both;
+    }
+    .brand {
+      font-family: var(--display);
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .brand span { color: var(--brass); }
+    .sub {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 40rem;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center;
+      margin-top: 0.85rem;
+    }
+    .chip {
+      appearance: none; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted); border-radius: 999px;
+      padding: 0.35rem 0.75rem; font: inherit; font-size: 0.82rem;
+      cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+    }
+    .chip.active {
+      color: var(--bg0); background: var(--brass); border-color: var(--brass);
+      font-weight: 600;
+    }
+    .chip:hover { border-color: var(--brass-dim); color: var(--ink); }
+    #statusDot {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      background: var(--muted); display: inline-block; margin-right: 0.35rem;
+    }
+    #statusDot.ok { background: var(--ok); box-shadow: 0 0 10px rgba(106,155,106,.5); }
+    #statusDot.bad { background: var(--danger); }
+    main {
+      overflow: auto;
+      padding: 1rem 1.25rem 1.25rem;
+      scroll-behavior: smooth;
+    }
+    #log {
+      max-width: 720px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 0.75rem;
+      min-height: 100%;
+    }
+    .msg {
+      max-width: min(92%, 34rem);
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      animation: fadeup .28s ease-out both;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(145deg, #2a3648, var(--user));
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: linear-gradient(160deg, #222933, var(--bot));
+    }
+    .msg.sys {
+      align-self: center;
+      background: transparent;
+      border-style: dashed;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .msg .meta {
+      margin-top: 0.55rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .msg .meta summary {
+      cursor: pointer; color: var(--brass-dim); list-style: none;
+    }
+    .msg .meta summary::-webkit-details-marker { display: none; }
+    footer {
+      border-top: 1px solid var(--line);
+      background: rgba(14, 17, 22, 0.78);
+      backdrop-filter: blur(12px);
+      padding: 0.85rem 1.25rem 1.1rem;
+    }
+    .composer {
+      max-width: 720px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.65rem;
+      align-items: end;
+    }
+    textarea {
+      width: 100%; min-height: 3.2rem; max-height: 10rem;
+      resize: vertical; border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--ink); font: inherit; padding: 0.85rem 1rem;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    textarea:focus {
+      border-color: var(--brass);
+      box-shadow: 0 0 0 3px rgba(196,163,90,.15);
+    }
+    button.send {
+      appearance: none; border: 0; border-radius: var(--radius);
+      background: var(--brass); color: #1a1408;
+      font: inherit; font-weight: 700; padding: 0.85rem 1.15rem;
+      cursor: pointer; min-width: 6.5rem;
+      transition: transform .12s ease, filter .12s;
+    }
+    button.send:hover { filter: brightness(1.06); }
+    button.send:active { transform: translateY(1px); }
+    button.send:disabled {
+      opacity: 0.45; cursor: wait; filter: grayscale(.3);
+    }
+    @keyframes fadeup {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (max-width: 560px) {
+      .composer { grid-template-columns: 1fr; }
+      button.send { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="brand">Кре<span>пость</span></h1>
+    <p class="sub">Чат с боевым API на Studio. Ответ пишет Supervisor по vault / памяти.</p>
+    <div class="toolbar">
+      <button type="button" class="chip active" data-mode="query" id="modeQuery">Обычный</button>
+      <button type="button" class="chip" data-mode="agent" id="modeAgent">Агент (tools)</button>
+      <button type="button" class="chip" id="btnClear">Очистить</button>
+      <button type="button" class="chip" id="btnNewSession">Новая сессия</button>
+      <span class="chip" style="cursor:default">
+        <i id="statusDot"></i><span id="statusText">проверка…</span>
+      </span>
+    </div>
+  </header>
+
+  <main id="scroller">
+    <div id="log"></div>
+  </main>
+
+  <footer>
+    <form class="composer" id="form">
+      <textarea id="input" rows="2" placeholder="Напиши Крепости…" autofocus></textarea>
+      <button class="send" type="submit" id="send">Отправить</button>
+    </form>
+  </footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const logEl = $("log");
+    const input = $("input");
+    const sendBtn = $("send");
+    const statusDot = $("statusDot");
+    const statusText = $("statusText");
+    const scroller = $("scroller");
+
+    let mode = localStorage.getItem("krepost_chat_mode") || "query";
+    let sessionId = localStorage.getItem("krepost_session_id") || crypto.randomUUID();
+    localStorage.setItem("krepost_session_id", sessionId);
+
+    function setMode(m) {
+      mode = m;
+      localStorage.setItem("krepost_chat_mode", m);
+      $("modeQuery").classList.toggle("active", m === "query");
+      $("modeAgent").classList.toggle("active", m === "agent");
+    }
+    setMode(mode);
+
+    $("modeQuery").onclick = () => setMode("query");
+    $("modeAgent").onclick = () => setMode("agent");
+    $("btnClear").onclick = () => { logEl.innerHTML = ""; addSys("История очищена. Сессия та же."); };
+    $("btnNewSession").onclick = () => {
+      sessionId = crypto.randomUUID();
+      localStorage.setItem("krepost_session_id", sessionId);
+      logEl.innerHTML = "";
+      addSys("Новая сессия: " + sessionId.slice(0, 8) + "…");
+    };
+
+    function addSys(text) {
+      const d = document.createElement("div");
+      d.className = "msg sys";
+      d.textContent = text;
+      logEl.appendChild(d);
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    function addMsg(role, text, metaHtml) {
+      const d = document.createElement("div");
+      d.className = "msg " + role;
+      d.textContent = text;
+      if (metaHtml) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = metaHtml;
+        d.appendChild(meta);
+      }
+      logEl.appendChild(d);
+      scroller.scrollTop = scroller.scrollHeight;
+      return d;
+    }
+
+    async function ping() {
+      try {
+        const r = await fetch("/health", { cache: "no-store" });
+        if (!r.ok) throw new Error("bad");
+        const j = await r.json();
+        statusDot.className = "ok";
+        statusText.textContent = "онлайн" + (j.agent ? " · agent" : "");
+      } catch {
+        statusDot.className = "bad";
+        statusText.textContent = "нет связи с API";
+      }
+    }
+    ping();
+    setInterval(ping, 20000);
+
+    function formatMeta(data) {
+      const diag = data.diagnostics || {};
+      const bits = [
+        `status=${data.status}`,
+        `verdict=${data.verdict}`,
+        `latency=${Math.round(data.latency_ms || 0)}ms`,
+      ];
+      if (diag.hierarchical) bits.push("HierarchicalDomainRAG");
+      if (diag.EvidenceGrader) bits.push("grade=" + diag.EvidenceGrader);
+      if (diag.brief_source) bits.push("brief=" + diag.brief_source);
+      if (diag.rag_chunks != null) bits.push("chunks=" + diag.rag_chunks);
+      let extra = "";
+      if (diag.SearchBrief) {
+        extra = "<pre style='margin:.4rem 0 0;white-space:pre-wrap'>" +
+          escapeHtml(JSON.stringify(diag.SearchBrief, null, 2)) + "</pre>";
+      }
+      return "<details><summary>" + escapeHtml(bits.join(" · ")) +
+        "</summary>" + extra + "</details>";
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || sendBtn.disabled) return;
+      addMsg("user", text);
+      input.value = "";
+      sendBtn.disabled = true;
+      const thinking = addMsg("bot", "Думаю…");
+      const path = mode === "agent" ? "/v1/agent" : "/v1/query";
+      try {
+        const r = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, session_id: sessionId }),
+        });
+        const data = await r.json();
+        thinking.remove();
+        if (!r.ok) {
+          addMsg("bot", "Ошибка API: " + (data.detail || r.status), "");
+        } else {
+          const out = (data.output || "").trim() || "(пустой ответ)";
+          addMsg("bot", out, formatMeta(data));
+        }
+      } catch (err) {
+        thinking.remove();
+        addMsg("bot", "Сеть/таймаут: " + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        $("form").requestSubmit();
+      }
+    });
+
+    addSys("Сессия " + sessionId.slice(0, 8) + "… · Enter — отправить, Shift+Enter — новая строка");
+  </script>
+</body>
+</html>
