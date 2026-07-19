@@ -47,6 +47,8 @@ MAX_BODY_BYTES = 256 * 1024  # 256 KB — тело запроса; текст о
 class QueryRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=32000)
     session_id: str = Field(..., min_length=1, max_length=200)
+    # False = быстрый чат (без RAG / HierarchicalDomainRAG). По умолчанию полный бой.
+    use_memory: bool = True
 
 
 class QueryResponse(BaseModel):
@@ -196,7 +198,9 @@ def create_app(
 
     @app.post("/v1/query", response_model=QueryResponse)
     async def query(req: QueryRequest):
-        result = await orchestrator.handle(req.text, req.session_id)
+        result = await orchestrator.handle(
+            req.text, req.session_id, use_memory=req.use_memory
+        )
         return _to_response(result)
 
     if agent is not None:

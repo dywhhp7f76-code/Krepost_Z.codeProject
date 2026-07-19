@@ -63,6 +63,17 @@
       font-size: 0.92rem;
       max-width: 40rem;
     }
+    .warn {
+      display: none;
+      margin-top: 0.65rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid rgba(196, 90, 90, 0.45);
+      background: rgba(80, 30, 30, 0.35);
+      color: #f0c8c8;
+      font-size: 0.88rem;
+    }
+    .warn.show { display: block; }
     .toolbar {
       display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center;
       margin-top: 0.85rem;
@@ -187,9 +198,11 @@
 <body>
   <header>
     <h1 class="brand">Кре<span>пость</span></h1>
-    <p class="sub">Чат с боевым API на Studio. Ответ пишет Supervisor по vault / памяти.</p>
+    <p class="sub">По умолчанию <b>быстрый</b> чат (как Studio). Режим «Vault» — тяжёлый RAG, 30–90с.</p>
+    <div class="warn" id="hostWarn"></div>
     <div class="toolbar">
-      <button type="button" class="chip active" data-mode="query" id="modeQuery">Обычный</button>
+      <button type="button" class="chip active" data-mode="fast" id="modeFast">Быстрый</button>
+      <button type="button" class="chip" data-mode="vault" id="modeVault">Vault / RAG</button>
       <button type="button" class="chip" data-mode="agent" id="modeAgent">Агент (tools)</button>
       <button type="button" class="chip" id="btnClear">Очистить</button>
       <button type="button" class="chip" id="btnNewSession">Новая сессия</button>
@@ -219,24 +232,54 @@
     const statusText = $("statusText");
     const scroller = $("scroller");
 
-    let mode = localStorage.getItem("krepost_chat_mode") || "query";
-    let sessionId = localStorage.getItem("krepost_session_id") || crypto.randomUUID();
-    localStorage.setItem("krepost_session_id", sessionId);
+    // http://10.0.0.x — не secure context → crypto.randomUUID нет (Safari/Chrome)
+    function uuid() {
+      try {
+        if (globalThis.crypto && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID();
+        }
+      } catch (_) {}
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
+
+    let mode = "fast";
+    try {
+      mode = localStorage.getItem("krepost_chat_mode") || "fast";
+    } catch (_) {}
+    if (mode === "query") mode = "fast"; // старое имя → быстрый
+    let sessionId = null;
+    try {
+      sessionId = localStorage.getItem("krepost_session_id");
+    } catch (_) {}
+    if (!sessionId) sessionId = uuid();
+    try {
+      localStorage.setItem("krepost_session_id", sessionId);
+    } catch (_) {}
 
     function setMode(m) {
       mode = m;
-      localStorage.setItem("krepost_chat_mode", m);
-      $("modeQuery").classList.toggle("active", m === "query");
+      try {
+        localStorage.setItem("krepost_chat_mode", m);
+      } catch (_) {}
+      $("modeFast").classList.toggle("active", m === "fast");
+      $("modeVault").classList.toggle("active", m === "vault");
       $("modeAgent").classList.toggle("active", m === "agent");
     }
     setMode(mode);
 
-    $("modeQuery").onclick = () => setMode("query");
+    $("modeFast").onclick = () => setMode("fast");
+    $("modeVault").onclick = () => setMode("vault");
     $("modeAgent").onclick = () => setMode("agent");
     $("btnClear").onclick = () => { logEl.innerHTML = ""; addSys("История очищена. Сессия та же."); };
     $("btnNewSession").onclick = () => {
-      sessionId = crypto.randomUUID();
-      localStorage.setItem("krepost_session_id", sessionId);
+      sessionId = uuid();
+      try {
+        localStorage.setItem("krepost_session_id", sessionId);
+      } catch (_) {}
       logEl.innerHTML = "";
       addSys("Новая сессия: " + sessionId.slice(0, 8) + "…");
     };
@@ -264,16 +307,30 @@
       return d;
     }
 
+    const hostWarn = $("hostWarn");
+    const host = location.hostname;
+    if (host === "127.0.0.1" || host === "localhost") {
+      hostWarn.className = "warn show";
+      hostWarn.innerHTML =
+        "Сейчас открыт <b>localhost</b> — это не Studio. " +
+        "С Air открывай: <b>http://10.0.0.1:8000/chat</b> " +
+        "(или ярлык Krepost Chat).";
+    }
+
     async function ping() {
+      const ctrl = new AbortController();
+      const kill = setTimeout(() => ctrl.abort(), 4000);
       try {
-        const r = await fetch("/health", { cache: "no-store" });
+        const r = await fetch("/health", { cache: "no-store", signal: ctrl.signal });
         if (!r.ok) throw new Error("bad");
         const j = await r.json();
         statusDot.className = "ok";
-        statusText.textContent = "онлайн" + (j.agent ? " · agent" : "");
+        statusText.textContent = "онлайн · " + host + (j.agent ? " · agent" : "");
       } catch {
         statusDot.className = "bad";
-        statusText.textContent = "нет связи с API";
+        statusText.textContent = "нет связи с API на " + host;
+      } finally {
+        clearTimeout(kill);
       }
     }
     ping();
@@ -286,6 +343,7 @@
         `verdict=${data.verdict}`,
         `latency=${Math.round(data.latency_ms || 0)}ms`,
       ];
+      if (diag.fast_path) bits.push("fast");
       if (diag.hierarchical) bits.push("HierarchicalDomainRAG");
       if (diag.EvidenceGrader) bits.push("grade=" + diag.EvidenceGrader);
       if (diag.brief_source) bits.push("brief=" + diag.brief_source);
@@ -314,15 +372,34 @@
       addMsg("user", text);
       input.value = "";
       sendBtn.disabled = true;
-      const thinking = addMsg("bot", "Думаю…");
+      const thinking = addMsg("bot", "Studio думает… 0с");
+      let secs = 0;
+      const expectHint =
+        mode === "vault" || mode === "agent"
+          ? " (Vault/агент — до ~90с норм)"
+          : " (быстрый)";
+      const tick = setInterval(() => {
+        secs += 1;
+        thinking.textContent = "Studio думает… " + secs + "с" + expectHint;
+      }, 1000);
       const path = mode === "agent" ? "/v1/agent" : "/v1/query";
+      const body = {
+        text,
+        session_id: sessionId,
+        use_memory: mode === "vault",
+      };
+      const ctrl = new AbortController();
+      const kill = setTimeout(() => ctrl.abort(), mode === "fast" ? 60000 : 180000);
       try {
         const r = await fetch(path, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, session_id: sessionId }),
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
         });
         const data = await r.json();
+        clearInterval(tick);
+        clearTimeout(kill);
         thinking.remove();
         if (!r.ok) {
           addMsg("bot", "Ошибка API: " + (data.detail || r.status), "");
@@ -331,8 +408,14 @@
           addMsg("bot", out, formatMeta(data));
         }
       } catch (err) {
+        clearInterval(tick);
+        clearTimeout(kill);
         thinking.remove();
-        addMsg("bot", "Сеть/таймаут: " + err.message);
+        const msg =
+          err.name === "AbortError"
+            ? "Таймаут 180с — Studio/LM Studio не ответили. Проверь LM Studio на Studio и launchd."
+            : "Сеть: " + err.message + " · URL должен быть http://10.0.0.1:8000/chat";
+        addMsg("bot", msg);
       } finally {
         sendBtn.disabled = false;
         input.focus();

@@ -101,7 +101,14 @@ class Orchestrator:
             status=result.status,
         )
 
-    async def handle(self, text: str, session_id: str) -> OrchestrationResult:
+    async def handle(
+        self,
+        text: str,
+        session_id: str,
+        *,
+        use_memory: bool = True,
+    ) -> OrchestrationResult:
+        """use_memory=False — быстрый чат: security + LLM, без RAG/Hierarchical."""
         start = time.perf_counter()
 
         # ── Вход: слои 1–3 ──────────────────────────────────────────────
@@ -130,8 +137,11 @@ class Orchestrator:
         # ── RAG (опционально): retrieve → OCC-reader или build_rag_messages ─
         rag_messages: Optional[List[Dict[str, str]]] = None
         rag_meta: Dict[str, Any] = {}
+        if not use_memory:
+            rag_meta["use_memory"] = False
+            rag_meta["fast_path"] = True
         retrieval = None
-        if self.memory_store is not None:
+        if use_memory and self.memory_store is not None:
             try:
                 retrieval = await self.memory_store.retrieve(text)
                 rag_meta = {
