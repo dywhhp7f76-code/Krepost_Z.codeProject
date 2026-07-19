@@ -140,8 +140,8 @@
   `evidence_grader` / `hierarchical_rag` / `supervisor_brief`; Probnoki #56/#57.
   Metadata `/v1/query` → `diagnostics.SearchBrief` + `EvidenceGrader`.
 - **Связь:** Phase 3 = [_handoff/MEMORY_ROUTER_SPEC.md](_handoff/MEMORY_ROUTER_SPEC.md).
-- **Next:** HealthClaw induction; RELAI verifier suite (gate уже дергает
-  `allows_auto_rsi` на `mark_integrated`); реальные Ataker seeds.
+- **Next:** RELAI verifier suite (полный eval); реальные Ataker seeds;
+  rubric-groundedness. HealthClaw scaffold ✅ (`healthclaw.py`, #58).
 
 ### RAG поверх Obsidian с контролем надёжности  ✅ (сделано 2026-07-02)
 - **Что готово:** `krepost/memory/` — `MemoryStore` (embedder + ChromaDB,
@@ -380,9 +380,11 @@
 - **Не раньше:** — (предпосылки закрыты: Studio+Chroma+vault).
 - **Откуда:** memory/2026-07-16.
 
-#### HealthClaw induction  🔜 СЕЙЧАС · этап **memory / episodic**
-- **Что:** после эпизода решать: профиль / процедура / оставить episodic / выкинуть.
-- **Ставить:** **сейчас** тонким слоем поверх уже живого EpisodicMemory; полный цикл — вместе с Phase 3.
+#### HealthClaw induction  ✅ scaffold · этап **memory / episodic**
+- **Что:** после эпизода: `profile` / `procedure` / `keep_episodic` / `discard`.
+- **✅ (2026-07-19):** `krepost/memory/healthclaw.py` + hook в `record_episode`
+  (`KREPOST_ENABLE_HEALTHCLAW=1`); JSONL profile/procedures; Probnoki #58.
+  LLM-judge induction — следующий шаг.
 - **Откуда:** memory/2026-07-16 (HC-Guo/HealthClaw).
 
 #### Rubric-grounded RAG  ⏳ СКОРО · этап **memory + defense L4**

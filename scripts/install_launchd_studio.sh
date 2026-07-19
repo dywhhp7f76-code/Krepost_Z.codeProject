@@ -43,6 +43,8 @@ cat > "${PLIST}" <<EOF
     <string>1</string>
     <key>KREPOST_ENABLE_HIERARCHICAL_RAG</key>
     <string>1</string>
+    <key>KREPOST_ENABLE_HEALTHCLAW</key>
+    <string>1</string>
     <key>KREPOST_MAIN_MODEL</key>
     <string>qwen/qwen3.6-35b-a3b</string>
     <key>KREPOST_GUARD_MODEL</key>
