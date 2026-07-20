@@ -52,10 +52,11 @@
 - LM Studio на Air: `http://127.0.0.1:1234/v1`; guard id = `qwen3guard-gen-4b` (дефис, не `:` как в Ollama).
 - Guard timeout на CPU Air: **120 s** (дефолт 5 s → circuit breaker).
 - На Studio main — **35b-a3b**, не 27b dense (ROADMAP-v2.1 устарел, см. ниже).
-- **Studio боевой стек (2026-07-17):** LM Studio `:1234` + API `:8000` (`serve_lmstudio.py`);
+- **Studio боевой стек (✅ current):** LM Studio `:1234` + API `:8000` (`serve_lmstudio.py`);
   `/v1/query` (security→RAG→LLM), `/v1/agent` (fetch/memory_search/vault_read);
   BGE-M3 + persistent Chroma, EpisodicMemory (GREEN/YELLOW/RED→quarantine),
-  launchd `com.hervam.krepost.serve`. Smoke `KREPOST-RAG-7742` проходит.
+  agent harness, launchd `com.hervam.krepost.serve` (`scripts/install_launchd_studio.sh`).
+  Smoke `KREPOST-RAG-7742` проходит. **Next:** Ataker на Air; Telegram — позже.
 
 ---
 
@@ -162,10 +163,9 @@
 - **Что готово:** `krepost/memory/episodic.py` + `BGEProvider` (общая BGE-модель
   с RAG, без второй загрузки); `record_episode` в Orchestrator и ToolAgent после
   каждого ответа; RED/YELLOW → quarantine; `KREPOST_ENABLE_EPISODIC=1` (дефолт on);
-  persist `data/memory/`. Probnoki #52 (quarantine).
-- **Next (этап memory, СЕЙЧАС после Phase 3 scaffold):** HealthClaw-style
-  induction поверх episodic (что в профиль / процедуру / эпизод / выкинуть) —
-  см. разведку 2026-07-16. MemoryRouter (Phase 3), Ataker на Air, Telegram — позже.
+  persist `data/memory/`. Probnoki #52 (quarantine). HealthClaw scaffold ✅ (#58).
+- **Next:** Ataker на Air (Useful/Correct/Safe); Telegram-алерты — позже.
+  MemoryRouter Phase 3 уже live на Studio.
 
 ### Контекстная инженерия для слабых локальных моделей  ✅ (в составе RAG-слоя)
 - **Что готово:** relevance threshold + ранжирование по score + фильтрация
@@ -354,8 +354,8 @@
 
 | Приоритет | Что | Этап Крепости | Когда | Зачем |
 |-----------|-----|---------------|-------|-------|
-| 1 | Domain-routed RAG → **MemoryRouter Phase 3** | memory / Phase 3 | **СЕЙЧАС** | Плоский RAG упрётся в домены vault |
-| 2 | HealthClaw induction поверх EpisodicMemory | memory / episodic | **СЕЙЧАС** (после Phase 3 scaffold или параллельно тонким слоем) | Не раздувать контекст; решать что закреплять |
+| 1 | Domain-routed RAG → **MemoryRouter Phase 3** | memory / Phase 3 | **✅ live** | Плоский RAG упрётся в домены vault |
+| 2 | HealthClaw induction поверх EpisodicMemory | memory / episodic | **✅ scaffold** (#58; LLM-judge — СКОРО) | Не раздувать контекст; решать что закреплять |
 | 3 | RELAI regression control в ImprovementGate | evolution + governance | **СЕЙЧАС** (правило), код verifier — с Ataker evals | Без этого RSI деградирует |
 | 4 | Evals Useful/Correct/Safe + AI-пентест сценарии | redteam / Ataker | **СЕЙЧАС→СКОРО** (на Air) | Continuous redteam + регресс для gate |
 | 5 | Rubric-groundedness поверх RAG-ответа | memory + defense L4 | **СКОРО** (после Phase 3) | Меньше галлюцинаций на vault |
@@ -374,10 +374,9 @@
 
 ### memory — детали
 
-#### Domain-routed agents / MemoryRouter  🔜 СЕЙЧАС · этап **memory Phase 3**
+#### Domain-routed agents / MemoryRouter  ✅ live Studio · этап **memory Phase 3**
 - **Что:** роутер по доменам vault вместо naive flat RAG (Habr LangGraph + наша MEMORY_ROUTER_SPEC).
-- **Ставить:** **сейчас** — следующая крупная фича после live-стека.
-- **Не раньше:** — (предпосылки закрыты: Studio+Chroma+vault).
+- **Статус:** ✅ live на Studio (`KREPOST_ENABLE_MEMORY_ROUTER=1`); см. секцию Phase 3 выше.
 - **Откуда:** memory/2026-07-16.
 
 #### HealthClaw induction  ✅ scaffold · этап **memory / episodic**

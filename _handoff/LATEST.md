@@ -9,6 +9,16 @@
 
 ---
 
+- ops(добить): волна закрыта по коду/докам — BGE-M3+Chroma, live API `:8000`,
+  agent harness, episodic-in-loop, `scripts/install_launchd_studio.sh` (идемпотентный
+  LaunchAgent `com.hervam.krepost.serve`). ROADMAP: next = Ataker / Telegram позже
+  (MemoryRouter Phase 3 уже live). Studio rsync+launchd+smoke — **не выполнены**:
+  `10.0.0.1` ping ok, SSH «system is locked» / Permission denied, `:8000` недоступен.
+- Коммит: fd1d043
+- Проверка: ping 10.0.0.1 → 0% loss; ssh hervam@10.0.0.1 → locked; curl :8000 → fail.
+
+---
+
 - feat(memory): HealthClaw induction scaffold — profile/procedure/keep/discard
   в `record_episode`; Probnoki #58; launchd `KREPOST_ENABLE_HEALTHCLAW`.
 - Коммит: 3980a24
@@ -90,9 +100,9 @@
 
 ---
 
-- feat(episodic+ops): BGEProvider + EpisodicMemory wired in Orchestrator/ToolAgent/serve_lmstudio (KREPOST_ENABLE_EPISODIC=1), episode_hook fail-open, Probnoki #52 quarantine; scripts/install_launchd_studio.sh (com.hervam.krepost.serve); ROADMAP Studio live stack; rsync+smoke on Mac Studio.
-- Коммит: (ожидает push)
-- Проверка: .venv/bin/python -m pytest Probnoki/test_52_episodic_quarantine.py -q → 3 passed; curl Studio :8000/health; /v1/query benign; /v1/agent vault_read KREPOST-RAG-7742.
+- feat(episodic+ops): BGEProvider + EpisodicMemory wired in Orchestrator/ToolAgent/serve_lmstudio (KREPOST_ENABLE_EPISODIC=1), episode_hook fail-open, Probnoki #52 quarantine; scripts/install_launchd_studio.sh (com.hervam.krepost.serve); ROADMAP Studio live stack.
+- Коммит: (см. ops/добить выше)
+- Проверка: .venv/bin/python -m pytest Probnoki/test_52_episodic_quarantine.py -q → 3 passed. Studio smoke — отложен (машина locked).
 
 ---
 
