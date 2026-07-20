@@ -14,7 +14,7 @@
   LaunchAgent `com.hervam.krepost.serve`). ROADMAP: next = Ataker / Telegram позже
   (MemoryRouter Phase 3 уже live). Studio rsync+launchd+smoke — **не выполнены**:
   `10.0.0.1` ping ok, SSH «system is locked» / Permission denied, `:8000` недоступен.
-- Коммит: fd1d043
+- Коммит: 3ad68ec
 - Проверка: ping 10.0.0.1 → 0% loss; ssh hervam@10.0.0.1 → locked; curl :8000 → fail.
 
 ---
