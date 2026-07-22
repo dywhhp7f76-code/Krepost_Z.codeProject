@@ -12,16 +12,24 @@
 
 ## Установка на MacBook Air
 
+Программа **не** ставится сама в «Программы» — сначала код из git, потом установщик.
+
 ```bash
 cd /path/to/Krepost_Z.codeProject
+git fetch origin
+git checkout cursor/gui-download-manager-e5ae   # пока PR не в main
 chmod +x tools/KrepostDownloader/install_mac.sh
 ./tools/KrepostDownloader/install_mac.sh
-open tools/KrepostDownloader/KrepostDownloader.app
 ```
 
-Нужен **Python 3 с Tkinter** (установщик с [python.org](https://www.python.org/downloads/) — галочка Tcl/Tk, или `brew install python-tk`).
+Установщик кладёт ярлык сюда (его ищет Spotlight):
 
-После `install_mac.sh` можно перетащить `KrepostDownloader.app` в **Программы**.
+`~/Applications/Krepost Downloader.app`
+
+Открыть: `open ~/Applications/Krepost\ Downloader.app`  
+Или Finder → ваша домашняя папка → **Applications** (не системные «Программы»).
+
+Нужен **Python 3 с Tkinter** (установщик с [python.org](https://www.python.org/downloads/) — галочка Tcl/Tk, или `brew install python-tk`).
 
 **Ярлык / иконка:** папка, залетающая в магнит (`assets/AppIcon.icns`).
 
