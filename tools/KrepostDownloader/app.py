@@ -1,24 +1,56 @@
 #!/usr/bin/env python3
 """KrepostDownloader — GUI download manager with resume (no terminal required).
 
-Double-click KrepostDownloader.app on Mac, or run:
-  python3 app.py
-  python3 app.py 'https://example.com/file.gguf'
+macOS: avoids ttk 'aqua' + custom colors (blank dark window in Dark Mode).
+Uses clam theme + explicit colors so controls stay visible.
 """
 from __future__ import annotations
 
+import os
 import queue
 import sys
-import tkinter as tk
+import traceback
 import webbrowser
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import (
+    BOTH,
+    END,
+    LEFT,
+    RIGHT,
+    X,
+    Y,
+    BooleanVar,
+    Button,
+    Entry,
+    Frame,
+    Label,
+    Scrollbar,
+    StringVar,
+    Tk,
+    filedialog,
+    messagebox,
+    ttk,
+)
 from typing import Optional
+
+# Ensure sibling imports work when launched from .app Resources
+_APP_DIR = Path(__file__).resolve().parent
+if str(_APP_DIR) not in sys.path:
+    sys.path.insert(0, str(_APP_DIR))
 
 from downloader_core import DownloadJob, DownloadManager, JobState, looks_like_url
 
-APP_DIR = Path(__file__).resolve().parent
 DEFAULT_DEST = Path.home() / "Downloads"
+LOG_PATH = Path.home() / "Library" / "Logs" / "KrepostDownloader.log"
+
+# Light palette — forced, independent of system Dark Mode
+BG = "#E8EEF2"
+CARD = "#F4F7FA"
+FG = "#0F2A3D"
+MUTED = "#3D5A6C"
+ACCENT = "#0B6E4F"
+ACCENT_FG = "#FFFFFF"
+BORDER = "#C5D0D8"
 
 
 def _fmt_bytes(n: Optional[float]) -> str:
@@ -38,18 +70,32 @@ def _fmt_speed(bps: float) -> str:
     return f"{_fmt_bytes(bps)}/s"
 
 
-class App(tk.Tk):
+def _log(msg: str) -> None:
+    try:
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(msg.rstrip() + "\n")
+    except Exception:
+        pass
+
+
+class App(Tk):
     def __init__(self, initial_urls: Optional[list[str]] = None):
         super().__init__()
         self.title("Krepost Downloader")
-        self.geometry("780x520")
-        self.minsize(640, 420)
-        self.configure(bg="#E8EEF2")
+        self.geometry("820x540")
+        self.minsize(680, 440)
+        self.configure(bg=BG)
+
+        # Hint macOS / Tk to keep a light canvas when possible
+        try:
+            self.tk.call("set", "::tk::mac::useDarkAppearance", "0")
+        except Exception:
+            pass
 
         self._ui_q: queue.Queue = queue.Queue()
-        self.dest_var = tk.StringVar(value=str(DEFAULT_DEST))
-        self.url_var = tk.StringVar()
-        self._row_widgets: dict[str, dict] = {}
+        self.dest_var = StringVar(value=str(DEFAULT_DEST))
+        self.url_var = StringVar()
 
         self.manager = DownloadManager(on_progress=self._on_progress)
 
@@ -62,62 +108,98 @@ class App(tk.Tk):
             if looks_like_url(u):
                 self._enqueue(u, auto_start=True)
 
-        # Accept drops of text URLs on the window (best-effort)
-        self._setup_drop()
+        self._last_clip = ""
+        self.after(2000, self._watch_clipboard)
 
     def _build_style(self) -> None:
         style = ttk.Style(self)
+        # Never use 'aqua' here — custom colors vanish in Dark Mode → blank window
         try:
-            style.theme_use("aqua" if sys.platform == "darwin" else "clam")
-        except tk.TclError:
+            style.theme_use("clam")
+        except Exception:
             pass
-        style.configure("Title.TLabel", font=("Avenir Next", 22, "bold"), background="#E8EEF2", foreground="#0F2A3D")
-        style.configure("Sub.TLabel", font=("Avenir Next", 11), background="#E8EEF2", foreground="#3D5A6C")
-        style.configure("Card.TFrame", background="#F7FAFC")
-        style.configure("TFrame", background="#E8EEF2")
-        style.configure("TLabel", background="#E8EEF2", foreground="#0F2A3D", font=("Avenir Next", 11))
-        style.configure("Accent.TButton", font=("Avenir Next", 12, "bold"))
+        style.configure(
+            "Treeview",
+            background=CARD,
+            fieldbackground=CARD,
+            foreground=FG,
+            rowheight=26,
+            font=("Helvetica", 12),
+            bordercolor=BORDER,
+        )
+        style.configure(
+            "Treeview.Heading",
+            background=BG,
+            foreground=FG,
+            font=("Helvetica", 12, "bold"),
+            relief="flat",
+        )
+        style.map("Treeview", background=[("selected", "#B8D4C8")], foreground=[("selected", FG)])
 
     def _build_ui(self) -> None:
-        pad = {"padx": 16, "pady": 8}
-        head = ttk.Frame(self)
-        head.pack(fill="x", **pad)
-        ttk.Label(head, text="Krepost Downloader", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(
+        head = Frame(self, bg=BG)
+        head.pack(fill=X, padx=18, pady=(16, 6))
+        Label(
             head,
-            text="Докачка при обрыве сети · URL · вставка · перетаскивание ссылки",
-            style="Sub.TLabel",
+            text="Krepost Downloader",
+            bg=BG,
+            fg=FG,
+            font=("Helvetica", 22, "bold"),
         ).pack(anchor="w")
+        Label(
+            head,
+            text="Докачка при обрыве сети · вставьте URL · Скачать",
+            bg=BG,
+            fg=MUTED,
+            font=("Helvetica", 12),
+        ).pack(anchor="w", pady=(2, 0))
 
-        card = ttk.Frame(self, style="Card.TFrame")
-        card.pack(fill="x", padx=16, pady=4)
+        card = Frame(self, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
+        card.pack(fill=X, padx=18, pady=8)
 
-        row1 = ttk.Frame(card, style="Card.TFrame")
-        row1.pack(fill="x", padx=12, pady=(12, 4))
-        ttk.Label(row1, text="Ссылка", background="#F7FAFC").pack(side="left")
-        url_entry = ttk.Entry(row1, textvariable=self.url_var, font=("Menlo", 12))
-        url_entry.pack(side="left", fill="x", expand=True, padx=8)
-        url_entry.focus_set()
-        ttk.Button(row1, text="Вставить", command=self._paste_url).pack(side="left", padx=2)
-        ttk.Button(row1, text="Скачать", style="Accent.TButton", command=self._add_from_field).pack(side="left", padx=2)
-
-        row2 = ttk.Frame(card, style="Card.TFrame")
-        row2.pack(fill="x", padx=12, pady=(4, 12))
-        ttk.Label(row2, text="Папка", background="#F7FAFC").pack(side="left")
-        ttk.Entry(row2, textvariable=self.dest_var, font=("Avenir Next", 11)).pack(
-            side="left", fill="x", expand=True, padx=8
+        row1 = Frame(card, bg=CARD)
+        row1.pack(fill=X, padx=12, pady=(12, 6))
+        Label(row1, text="Ссылка", bg=CARD, fg=FG, font=("Helvetica", 12)).pack(side=LEFT)
+        self.url_entry = Entry(
+            row1,
+            textvariable=self.url_var,
+            font=("Menlo", 12),
+            bg="#FFFFFF",
+            fg=FG,
+            insertbackground=FG,
+            relief="solid",
+            bd=1,
         )
-        ttk.Button(row2, text="Выбрать…", command=self._pick_dest).pack(side="left")
+        self.url_entry.pack(side=LEFT, fill=X, expand=True, padx=8, ipady=4)
+        self.url_entry.focus_set()
+        self._btn(row1, "Вставить", self._paste_url).pack(side=LEFT, padx=2)
+        self._btn(row1, "Скачать", self._add_from_field, primary=True).pack(side=LEFT, padx=2)
 
-        hint = ttk.Label(
+        row2 = Frame(card, bg=CARD)
+        row2.pack(fill=X, padx=12, pady=(0, 12))
+        Label(row2, text="Папка", bg=CARD, fg=FG, font=("Helvetica", 12)).pack(side=LEFT)
+        Entry(
+            row2,
+            textvariable=self.dest_var,
+            font=("Helvetica", 12),
+            bg="#FFFFFF",
+            fg=FG,
+            insertbackground=FG,
+            relief="solid",
+            bd=1,
+        ).pack(side=LEFT, fill=X, expand=True, padx=8, ipady=4)
+        self._btn(row2, "Выбрать…", self._pick_dest).pack(side=LEFT)
+
+        Label(
             self,
-            text="Обрыв интернета не отменяет загрузку — программа сама продолжит с .part файла.",
-            style="Sub.TLabel",
-        )
-        hint.pack(anchor="w", padx=16)
+            text="Обрыв сети не отменяет загрузку — продолжит с .part файла.",
+            bg=BG,
+            fg=MUTED,
+            font=("Helvetica", 11),
+        ).pack(anchor="w", padx=18)
 
-        list_frame = ttk.Frame(self)
-        list_frame.pack(fill="both", expand=True, padx=16, pady=8)
+        list_frame = Frame(self, bg=BG)
+        list_frame.pack(fill=BOTH, expand=True, padx=18, pady=8)
 
         cols = ("name", "progress", "speed", "status")
         self.tree = ttk.Treeview(
@@ -132,69 +214,75 @@ class App(tk.Tk):
         self.tree.heading("speed", text="Скорость")
         self.tree.heading("status", text="Статус")
         self.tree.column("name", width=280, anchor="w")
-        self.tree.column("progress", width=160, anchor="w")
+        self.tree.column("progress", width=180, anchor="w")
         self.tree.column("speed", width=100, anchor="center")
-        self.tree.column("status", width=180, anchor="w")
-        scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
+        self.tree.column("status", width=200, anchor="w")
+        scroll = Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scroll.set)
-        self.tree.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
+        self.tree.pack(side=LEFT, fill=BOTH, expand=True)
+        scroll.pack(side=RIGHT, fill=Y)
 
-        btns = ttk.Frame(self)
-        btns.pack(fill="x", padx=16, pady=(0, 12))
-        ttk.Button(btns, text="Пауза", command=self._pause_sel).pack(side="left", padx=2)
-        ttk.Button(btns, text="Продолжить", command=self._resume_sel).pack(side="left", padx=2)
-        ttk.Button(btns, text="Отмена", command=self._cancel_sel).pack(side="left", padx=2)
-        ttk.Button(btns, text="Открыть папку", command=self._open_dest).pack(side="right", padx=2)
+        btns = Frame(self, bg=BG)
+        btns.pack(fill=X, padx=18, pady=(0, 14))
+        self._btn(btns, "Пауза", self._pause_sel).pack(side=LEFT, padx=2)
+        self._btn(btns, "Продолжить", self._resume_sel).pack(side=LEFT, padx=2)
+        self._btn(btns, "Отмена", self._cancel_sel).pack(side=LEFT, padx=2)
+        self._btn(btns, "Открыть папку", self._open_dest).pack(side=RIGHT, padx=2)
+
+    def _btn(self, parent, text, command, primary: bool = False) -> Button:
+        if primary:
+            return Button(
+                parent,
+                text=text,
+                command=command,
+                font=("Helvetica", 12, "bold"),
+                bg=ACCENT,
+                fg=ACCENT_FG,
+                activebackground="#095C42",
+                activeforeground=ACCENT_FG,
+                relief="flat",
+                padx=12,
+                pady=4,
+            )
+        return Button(
+            parent,
+            text=text,
+            command=command,
+            font=("Helvetica", 12),
+            bg="#FFFFFF",
+            fg=FG,
+            activebackground=BORDER,
+            relief="solid",
+            bd=1,
+            padx=10,
+            pady=3,
+        )
 
     def _bind_shortcuts(self) -> None:
         self.bind("<Command-v>", lambda e: self._paste_url())
         self.bind("<Control-v>", lambda e: self._paste_url())
         self.bind("<Return>", lambda e: self._add_from_field())
-        self.bind("<Command-l>", lambda e: self.focus_get())
-
-    def _setup_drop(self) -> None:
-        """Best-effort: tkinterdnd2 if installed; else ignore."""
-        try:
-            from tkinterdnd2 import DND_TEXT, DND_FILES, TkinterDnD  # type: ignore
-
-            # Re-init not possible; register on self if mixin available
-            if hasattr(self, "drop_target_register"):
-                self.drop_target_register(DND_TEXT, DND_FILES)
-                self.dnd_bind("<<Drop>>", self._on_drop)
-        except Exception:
-            # Fallback: poll clipboard for new http URLs when window focused
-            self._last_clip = ""
-            self.after(1500, self._watch_clipboard)
 
     def _watch_clipboard(self) -> None:
         try:
             clip = self.clipboard_get().strip()
             if (
                 clip
-                and clip != getattr(self, "_last_clip", "")
+                and clip != self._last_clip
                 and looks_like_url(clip)
                 and self.focus_displayof() is not None
             ):
                 self._last_clip = clip
-                # Only prefill field — don't auto-download from silent clipboard
                 if not self.url_var.get().strip():
                     self.url_var.set(clip)
-        except tk.TclError:
+        except Exception:
             pass
         self.after(2000, self._watch_clipboard)
-
-    def _on_drop(self, event) -> None:
-        data = (event.data or "").strip().strip("{}")
-        for line in data.replace("\r", "\n").split("\n"):
-            line = line.strip()
-            if looks_like_url(line):
-                self._enqueue(line, auto_start=True)
 
     def _paste_url(self) -> None:
         try:
             text = self.clipboard_get().strip()
-        except tk.TclError:
+        except Exception:
             return
         if looks_like_url(text):
             self.url_var.set(text)
@@ -226,9 +314,7 @@ class App(tk.Tk):
 
     def _selected_job_id(self) -> Optional[str]:
         sel = self.tree.selection()
-        if not sel:
-            return None
-        return sel[0]
+        return sel[0] if sel else None
 
     def _pause_sel(self) -> None:
         jid = self._selected_job_id()
@@ -253,9 +339,7 @@ class App(tk.Tk):
 
             subprocess.Popen(["open", str(path)])
         elif sys.platform.startswith("win"):
-            import os
-
-            os.startfile(str(path))  # type: ignore
+            os.startfile(str(path))  # type: ignore[attr-defined]
         else:
             webbrowser.open(path.as_uri())
 
@@ -277,7 +361,7 @@ class App(tk.Tk):
             return
         self.tree.insert(
             "",
-            "end",
+            END,
             iid=job.id,
             values=(job.resolved_name(), "0%", "—", job.state.value),
         )
@@ -305,11 +389,38 @@ class App(tk.Tk):
         )
 
 
+def _show_fatal(err: str) -> None:
+    _log(err)
+    try:
+        root = Tk()
+        root.withdraw()
+        messagebox.showerror(
+            "Krepost Downloader",
+            f"Не удалось запустить интерфейс.\n\n{err[:800]}\n\nЛог: {LOG_PATH}",
+        )
+        root.destroy()
+    except Exception:
+        if sys.platform == "darwin":
+            import subprocess
+
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'display dialog "Krepost Downloader ошибка:\\n{err[:400]}" buttons {{"OK"}}',
+                ],
+                check=False,
+            )
+
+
 def main() -> None:
     urls = [a for a in sys.argv[1:] if looks_like_url(a)]
-    # Also accept file:// lists from some browsers (ignore non-http)
-    app = App(initial_urls=urls)
-    app.mainloop()
+    try:
+        app = App(initial_urls=urls)
+        app.mainloop()
+    except Exception:
+        _show_fatal(traceback.format_exc())
+        raise
 
 
 if __name__ == "__main__":

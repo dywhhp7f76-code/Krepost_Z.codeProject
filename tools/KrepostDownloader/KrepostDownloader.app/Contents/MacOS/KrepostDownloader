@@ -49,10 +49,13 @@ EOF
   exit 1
 fi
 
-# pythonw hides console on some installs; fall back to python3
-PYW="${PY%/*}/pythonw"
-if [[ -x "$PYW" ]]; then
-  exec "$PYW" "$APP_HOME/app.py" "$@"
-else
-  exec "$PY" "$APP_HOME/app.py" "$@"
-fi
+LOG="${HOME}/Library/Logs/KrepostDownloader.log"
+mkdir -p "$(dirname "$LOG")"
+{
+  echo "---- $(date) ----"
+  echo "PY=$PY APP_HOME=$APP_HOME"
+  "$PY" -c "import tkinter; print('tk', tkinter.TkVersion)"
+} >>"$LOG" 2>&1 || true
+
+# Prefer python3 (not pythonw) so errors land in the log; GUI still has no Terminal.
+exec "$PY" "$APP_HOME/app.py" "$@" >>"$LOG" 2>&1
