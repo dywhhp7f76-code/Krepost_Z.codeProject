@@ -15,6 +15,14 @@ dependencies = [
 llm = ["openai"]
 full = ["openai", "chromadb"]
 dev = ["pytest", "pytest-asyncio"]
+planner = [
+    "openai",
+    "chromadb",
+    "sentence-transformers",
+    "pyotp>=2.9",
+    "argon2-cffi>=23.1",
+    "pyyaml>=6.0",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
