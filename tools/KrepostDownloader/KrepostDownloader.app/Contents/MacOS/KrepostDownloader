@@ -1,0 +1,53 @@
+#!/bin/bash
+# Native-style launcher: no Terminal window for the user.
+# Finds Python with Tk and starts the GUI; forwards URL args from "Open with".
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+# When bundled: .../KrepostDownloader.app/Contents/MacOS → Resources sibling holds code copy
+# Dev layout: tools/KrepostDownloader/{app.py, downloader_core.py, KrepostDownloader.app/...}
+APP_HOME="$ROOT"
+if [[ ! -f "$APP_HOME/app.py" ]]; then
+  # Installed: code next to .app
+  APP_HOME="$(cd "$(dirname "$0")/../../.." && pwd)"
+fi
+# Prefer Resources if we copied sources there
+RES="$(cd "$(dirname "$0")/../Resources" && pwd)"
+if [[ -f "$RES/app.py" ]]; then
+  APP_HOME="$RES"
+fi
+
+pick_python() {
+  for c in \
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3" \
+    "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3" \
+    "/opt/homebrew/bin/python3" \
+    "/usr/local/bin/python3" \
+    "python3"
+  do
+    if command -v "$c" >/dev/null 2>&1 || [[ -x "$c" ]]; then
+      if "$c" -c "import tkinter" 2>/dev/null; then
+        echo "$c"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+PY="$(pick_python || true)"
+if [[ -z "${PY}" ]]; then
+  osascript <<'EOF'
+display dialog "Нужен Python 3 с Tkinter.\n\nУстановите python.org (галочка Tcl/Tk) или:\n  brew install python-tk" buttons {"OK"} default button 1 with title "Krepost Downloader"
+EOF
+  exit 1
+fi
+
+# pythonw hides console on some installs; fall back to python3
+PYW="${PY%/*}/pythonw"
+if [[ -x "$PYW" ]]; then
+  exec "$PYW" "$APP_HOME/app.py" "$@"
+else
+  exec "$PY" "$APP_HOME/app.py" "$@"
+fi
