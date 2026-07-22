@@ -44,6 +44,14 @@ _APP_DIR = Path(__file__).resolve().parent
 if str(_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_APP_DIR))
 
+from bridge import (  # noqa: E402
+    bridge_report,
+    default_api_url,
+    guess_studio_peer,
+    save_config,
+    url_for_host,
+)
+
 BG = "#E8EEF2"
 CARD = "#F4F7FA"
 FG = "#0F2A3D"
@@ -53,7 +61,7 @@ ACCENT_FG = "#FFFFFF"
 BORDER = "#C5D0D8"
 LOG_PATH = Path.home() / "Library" / "Logs" / "KrepostChat.log"
 
-DEFAULT_API = os.environ.get("KREPOST_CHAT_URL", "http://127.0.0.1:8000")
+DEFAULT_API = default_api_url()
 
 
 def _log(msg: str) -> None:
@@ -203,6 +211,7 @@ class KrepostChatApp(Tk):
         Label(
             self.login_frame,
             text="Только для оператора. Пароль на Studio (KREPOST_OPERATOR_PASSWORD).\n"
+            "Другая сеть / не тот же Wi‑Fi → мост Tailscale (порты наружу не открываем).\n"
             "TOTP / ключ — позже.",
             bg=BG,
             fg=MUTED,
@@ -221,6 +230,12 @@ class KrepostChatApp(Tk):
         Entry(row, textvariable=self.api_var, font=("Menlo", 12), bg="#FFF", fg=FG).pack(
             side=LEFT, fill=X, expand=True, ipady=3
         )
+
+        bridges = Frame(card, bg=CARD)
+        bridges.pack(fill=X, padx=14, pady=(0, 6))
+        self._btn(bridges, "Мост Tailscale", self._use_tailscale).pack(side=LEFT, padx=2)
+        self._btn(bridges, "Домашний Wi‑Fi", self._use_lan).pack(side=LEFT, padx=2)
+        self._btn(bridges, "Статус моста", self._show_bridge_status).pack(side=LEFT, padx=2)
 
         row2 = Frame(card, bg=CARD)
         row2.pack(fill=X, padx=14, pady=(6, 14))
@@ -307,17 +322,64 @@ class KrepostChatApp(Tk):
         self.transcript.see(END)
         self.transcript.configure(state="disabled")
 
+    def _use_lan(self):
+        url = os.environ.get("KREPOST_LAN_URL", "http://10.0.0.1:8000")
+        self.api_var.set(url)
+        save_config({"studio_url": url, "preferred": "lan"})
+
+    def _use_tailscale(self):
+        def work():
+            peer = guess_studio_peer()
+            if not peer:
+                self.after(
+                    0,
+                    lambda: messagebox.showwarning(
+                        "Мост Tailscale",
+                        "Studio не найден.\n\n"
+                        "1) Поставь Tailscale на Studio и Air (один аккаунт)\n"
+                        "2) На Studio: ./scripts/krepost_bridge_studio.sh\n"
+                        "3) На Air: ./scripts/krepost_bridge_air.sh\n"
+                        "или впиши http://100.x.x.x:8000 вручную",
+                    ),
+                )
+                return
+            url = url_for_host(peer["ip"])
+            save_config(
+                {
+                    "studio_tailscale_ip": peer["ip"],
+                    "studio_url": url,
+                    "preferred": "tailscale",
+                }
+            )
+            self.after(0, lambda: self.api_var.set(url))
+            self.after(
+                0,
+                lambda: messagebox.showinfo(
+                    "Мост Tailscale",
+                    f"Studio: {peer['hostname']}\n{url}\n\nРаботает даже не в том же Wi‑Fi.",
+                ),
+            )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_bridge_status(self):
+        def work():
+            report = bridge_report()
+            self.after(0, lambda: messagebox.showinfo("Статус моста", report))
+
+        threading.Thread(target=work, daemon=True).start()
+
     def _do_login(self):
         url = self.api_var.get().strip()
         pw = self.password_var.get()
         if not url or not pw:
             messagebox.showwarning("Вход", "Укажите API и пароль")
             return
+        save_config({"studio_url": url})
 
         def work():
             try:
                 self.client = ApiClient(url)
-                # health optional
                 try:
                     h = self.client.health()
                     if h.get("auth_required") is False:

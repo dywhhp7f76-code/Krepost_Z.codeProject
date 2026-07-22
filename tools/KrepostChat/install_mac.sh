@@ -27,7 +27,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 echo -n 'APPL????' > "$APP/Contents/PkgInfo"
 
-cp -f "$HERE/app.py" "$RES/"
+cp -f "$HERE/app.py" "$HERE/bridge.py" "$RES/"
 cat > "$MACOS/KrepostChat" <<'LAUNCH'
 #!/bin/bash
 set -euo pipefail
