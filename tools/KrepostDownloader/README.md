@@ -23,6 +23,8 @@ open tools/KrepostDownloader/KrepostDownloader.app
 
 После `install_mac.sh` можно перетащить `KrepostDownloader.app` в **Программы**.
 
+**Ярлык / иконка:** папка, залетающая в магнит (`assets/AppIcon.icns`).
+
 ## Запуск из Cursor / отладка
 
 ```bash
