@@ -26,11 +26,16 @@ pick_python() {
     "/usr/local/bin/python3" \
     "python3"
   do
-    if command -v "$c" >/dev/null 2>&1 || [[ -x "$c" ]]; then
-      if "$c" -c "import tkinter" 2>/dev/null; then
-        echo "$c"
-        return 0
-      fi
+    bin=""
+    if [[ -x "$c" ]]; then
+      bin="$c"
+    elif command -v "$c" >/dev/null 2>&1; then
+      bin="$(command -v "$c")"
+    fi
+    [[ -n "$bin" ]] || continue
+    if "$bin" -c "import tkinter" 2>/dev/null; then
+      echo "$bin"
+      return 0
     fi
   done
   return 1
