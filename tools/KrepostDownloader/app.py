@@ -19,7 +19,6 @@ from tkinter import (
     RIGHT,
     X,
     Y,
-    BooleanVar,
     Button,
     Entry,
     Frame,
