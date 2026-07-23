@@ -21,6 +21,11 @@ import time
 
 import pyotp
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+_argon2 = PasswordHasher()
+
 
 class CapabilityLevel(IntEnum):
     L1_POISONS = 1
@@ -76,6 +81,7 @@ class AuthManager:
         self.lockout_seconds = lockout_seconds
         self._failed_attempts: Dict[CapabilityLevel, int] = defaultdict(int)
         self._lockout_until: Dict[CapabilityLevel, float] = defaultdict(float)
+        self._kill_hash: Optional[str] = None
 
     @classmethod
     def from_totp_secrets(cls, secrets: Dict[CapabilityLevel, str], **kwargs) -> "AuthManager":
@@ -108,3 +114,18 @@ class AuthManager:
             self._lockout_until[level] = time.time() + self.lockout_seconds
             self._failed_attempts[level] = 0
         return False
+
+    def set_kill_password(self, password: str) -> None:
+        self._kill_hash = _argon2.hash(password)
+
+    def verify_kill_password(self, password: str) -> bool:
+        if not self._kill_hash:
+            return False
+        try:
+            _argon2.verify(self._kill_hash, password)
+            return True
+        except VerifyMismatchError:
+            return False
+
+    def has_kill_password(self) -> bool:
+        return self._kill_hash is not None

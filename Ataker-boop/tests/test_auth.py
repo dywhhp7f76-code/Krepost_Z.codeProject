@@ -143,3 +143,32 @@ class TestAuthManagerLockout:
         auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")  # 1 again
 
         assert auth.is_locked_out(CapabilityLevel.L2_CHIMERA) is False
+
+
+class TestAuthManagerKillPassword:
+    def test_set_and_verify_kill_password(self):
+        auth = AuthManager()
+        auth.set_kill_password("Hervam_Secret_2026!")
+        assert auth.verify_kill_password("Hervam_Secret_2026!") is True
+
+    def test_wrong_kill_password_fails(self):
+        auth = AuthManager()
+        auth.set_kill_password("correct")
+        assert auth.verify_kill_password("wrong") is False
+
+    def test_no_kill_password_set_fails(self):
+        auth = AuthManager()
+        assert auth.verify_kill_password("anything") is False
+
+    def test_kill_password_is_hashed_not_plain(self):
+        auth = AuthManager()
+        auth.set_kill_password("my_secret")
+        assert hasattr(auth, "_kill_hash")
+        assert auth._kill_hash is not None
+        assert "my_secret" not in auth._kill_hash
+
+    def test_has_kill_password_flag(self):
+        auth = AuthManager()
+        assert auth.has_kill_password() is False
+        auth.set_kill_password("x")
+        assert auth.has_kill_password() is True
