@@ -172,3 +172,34 @@ class TestAuthManagerKillPassword:
         assert auth.has_kill_password() is False
         auth.set_kill_password("x")
         assert auth.has_kill_password() is True
+
+
+class TestAuthManagerIngestToken:
+    def test_generate_and_verify_ingest_token(self):
+        auth = AuthManager()
+        token = auth.generate_ingest_token()
+        assert len(token) == 32
+        assert auth.verify_ingest_token(token) is True
+
+    def test_wrong_ingest_token_fails(self):
+        auth = AuthManager()
+        auth.generate_ingest_token()
+        assert auth.verify_ingest_token("a" * 32) is False
+
+    def test_no_ingest_token_set_fails(self):
+        auth = AuthManager()
+        assert auth.verify_ingest_token("anything") is False
+
+    def test_ingest_lockout_after_3_failures(self):
+        auth = AuthManager()
+        auth.generate_ingest_token()
+        auth.max_attempts = 3
+        for _ in range(3):
+            auth.verify_ingest_token("wrong" * 5)
+        assert auth.verify_ingest_token(auth._ingest_token) is False
+
+    def test_has_ingest_token_flag(self):
+        auth = AuthManager()
+        assert auth.has_ingest_token() is False
+        auth.generate_ingest_token()
+        assert auth.has_ingest_token() is True

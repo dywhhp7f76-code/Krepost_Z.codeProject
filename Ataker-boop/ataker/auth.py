@@ -17,6 +17,7 @@ from enum import IntEnum, nonmember
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import Dict, Optional, Set
+import secrets
 import time
 
 import pyotp
@@ -82,6 +83,9 @@ class AuthManager:
         self._failed_attempts: Dict[CapabilityLevel, int] = defaultdict(int)
         self._lockout_until: Dict[CapabilityLevel, float] = defaultdict(float)
         self._kill_hash: Optional[str] = None
+        self._ingest_token: Optional[str] = None
+        self._ingest_failed: int = 0
+        self._ingest_lockout_until: float = 0.0
 
     @classmethod
     def from_totp_secrets(cls, secrets: Dict[CapabilityLevel, str], **kwargs) -> "AuthManager":
@@ -129,3 +133,29 @@ class AuthManager:
 
     def has_kill_password(self) -> bool:
         return self._kill_hash is not None
+
+    def generate_ingest_token(self) -> str:
+        """Создать и сохранить 32-char hex ingest token."""
+        token = secrets.token_hex(16)  # 32 hex chars
+        self._ingest_token = token
+        return token
+
+    def set_ingest_token(self, token: str) -> None:
+        self._ingest_token = token
+
+    def verify_ingest_token(self, token: str) -> bool:
+        if time.time() < self._ingest_lockout_until:
+            return False
+        if not self._ingest_token:
+            return False
+        if secrets.compare_digest(self._ingest_token, token):
+            self._ingest_failed = 0
+            return True
+        self._ingest_failed += 1
+        if self._ingest_failed >= self.max_attempts:
+            self._ingest_lockout_until = time.time() + self.lockout_seconds
+            self._ingest_failed = 0
+        return False
+
+    def has_ingest_token(self) -> bool:
+        return self._ingest_token is not None
