@@ -203,3 +203,209 @@ class TestAuthManagerIngestToken:
         assert auth.has_ingest_token() is False
         auth.generate_ingest_token()
         assert auth.has_ingest_token() is True
+
+
+
+class TestPlannerCapabilitiesUnlock:
+    def _auth_with_l2(self):
+        secret = pyotp.random_base32()
+        auth = AuthManager.from_totp_secrets({CapabilityLevel.L2_CHIMERA: secret})
+        return auth, secret
+
+    def test_unlock_l2_with_valid_totp(self):
+        auth, secret = self._auth_with_l2()
+        caps = PlannerCapabilities.locked()
+        code = pyotp.TOTP(secret).now()
+
+        assert caps.unlock(CapabilityLevel.L2_CHIMERA, code, auth) is True
+        assert caps.has(CapabilityLevel.L2_CHIMERA) is True
+
+    def test_unlock_l2_with_invalid_totp_fails(self):
+        auth, _ = self._auth_with_l2()
+        caps = PlannerCapabilities.locked()
+
+        assert caps.unlock(CapabilityLevel.L2_CHIMERA, "000000", auth) is False
+        assert caps.has(CapabilityLevel.L2_CHIMERA) is False
+
+    def test_unlock_l3_requires_l2_first(self):
+        l3_secret = pyotp.random_base32()
+        auth = AuthManager.from_totp_secrets({CapabilityLevel.L3_CODEBREAK: l3_secret})
+        caps = PlannerCapabilities.locked()
+        code = pyotp.TOTP(l3_secret).now()
+
+        assert caps.unlock(CapabilityLevel.L3_CODEBREAK, code, auth) is False
+
+    def test_unlock_l3_after_l2_succeeds(self):
+        l2_secret = pyotp.random_base32()
+        l3_secret = pyotp.random_base32()
+        auth = AuthManager.from_totp_secrets({
+            CapabilityLevel.L2_CHIMERA: l2_secret,
+            CapabilityLevel.L3_CODEBREAK: l3_secret,
+        })
+        caps = PlannerCapabilities.locked()
+
+        caps.unlock(CapabilityLevel.L2_CHIMERA, pyotp.TOTP(l2_secret).now(), auth)
+        assert caps.unlock(CapabilityLevel.L3_CODEBREAK, pyotp.TOTP(l3_secret).now(), auth) is True
+
+    def test_unlock_l5_with_kill_password_activates_kill(self):
+        auth = AuthManager()
+        auth.set_kill_password("Hervam_Kill_2026!")
+        caps = PlannerCapabilities.locked()
+
+        result = caps.unlock(CapabilityLevel.L5_KILL, "Hervam_Kill_2026!", auth)
+        assert result is True
+        assert caps.fully_locked is True
+        assert caps.has(CapabilityLevel.L1_POISONS) is False
+
+    def test_unlock_l5_wrong_password_no_effect(self):
+        auth = AuthManager()
+        auth.set_kill_password("correct")
+        caps = PlannerCapabilities.locked()
+
+        result = caps.unlock(CapabilityLevel.L5_KILL, "wrong", auth)
+        assert result is False
+        assert caps.fully_locked is False
+        assert caps.has(CapabilityLevel.L1_POISONS) is True
+
+    def test_unlock_blocked_when_fully_locked(self):
+        auth = AuthManager()
+        auth.set_totp_secret(CapabilityLevel.L2_CHIMERA, pyotp.random_base32())
+        caps = PlannerCapabilities.locked()
+        caps.fully_locked = True
+
+        secret = auth._totp_secrets[CapabilityLevel.L2_CHIMERA]
+        code = pyotp.TOTP(secret).now()
+        assert caps.unlock(CapabilityLevel.L2_CHIMERA, code, auth) is False
+
+    def test_reset_kill_requires_password(self):
+        auth = AuthManager()
+        auth.set_kill_password("secret")
+        caps = PlannerCapabilities.locked()
+        caps.activate_kill()
+
+        assert caps.reset_kill("wrong", auth) is False
+        assert caps.fully_locked is True
+        assert caps.reset_kill("secret", auth) is True
+        assert caps.fully_locked is False
+        assert caps.has(CapabilityLevel.L2_CHIMERA) is False
+
+    def test_fail_safe_paradox_l5_cannot_unlock_l2(self):
+        auth = AuthManager()
+        auth.set_kill_password("kill_pass")
+        caps = PlannerCapabilities.locked()
+
+        result = caps.unlock(CapabilityLevel.L2_CHIMERA, "kill_pass", auth)
+        assert result is False
+        assert caps.has(CapabilityLevel.L2_CHIMERA) is False
+
+
+
+import os
+from pathlib import Path
+from ataker.auth import init_secrets_dir, AuthManager
+
+
+class TestSecretFileIO:
+    def test_init_creates_dir_with_700_perms(self, tmp_path):
+        secrets_dir = tmp_path / "ataker_secrets"
+        init_secrets_dir(secrets_dir, kill_password="my_kill")
+        assert secrets_dir.is_dir()
+        if os.name == "posix":
+            mode = secrets_dir.stat().st_mode & 0o777
+            assert mode == 0o700
+
+    def test_init_creates_all_secret_files(self, tmp_path):
+        secrets_dir = tmp_path / "s"
+        init_secrets_dir(secrets_dir, kill_password="my_kill")
+        assert (secrets_dir / "totp_l2").is_file()
+        assert (secrets_dir / "totp_l3").is_file()
+        assert (secrets_dir / "totp_l4").is_file()
+        assert (secrets_dir / "kill_password_hash").is_file()
+        assert (secrets_dir / "ingest_token").is_file()
+
+    def test_secret_files_are_chmod_600(self, tmp_path):
+        if os.name != "posix":
+            pytest.skip("chmod only on posix")
+        secrets_dir = tmp_path / "s"
+        init_secrets_dir(secrets_dir, kill_password="my_kill")
+        for fname in ["totp_l2", "totp_l3", "totp_l4", "kill_password_hash", "ingest_token"]:
+            mode = (secrets_dir / fname).stat().st_mode & 0o777
+            assert mode == 0o600, f"{fname} has mode {oct(mode)}, expected 0o600"
+
+    def test_init_generates_different_secrets_each_call(self, tmp_path):
+        d1 = tmp_path / "s1"
+        d2 = tmp_path / "s2"
+        init_secrets_dir(d1, kill_password="x")
+        init_secrets_dir(d2, kill_password="x")
+        assert (d1 / "totp_l2").read_text() != (d2 / "totp_l2").read_text()
+        assert (d1 / "ingest_token").read_text() != (d2 / "ingest_token").read_text()
+
+    def test_from_secrets_dir_loads_everything(self, tmp_path):
+        secrets_dir = tmp_path / "s"
+        init_secrets_dir(secrets_dir, kill_password="my_kill")
+        auth = AuthManager.from_secrets_dir(secrets_dir)
+        assert auth.has_kill_password() is True
+        assert auth.verify_kill_password("my_kill") is True
+        assert auth.has_ingest_token() is True
+        for level in CapabilityLevel.UNLOCKABLE:
+            assert level in auth._totp_secrets
+
+    def test_from_secrets_dir_verifies_totp(self, tmp_path):
+        import pyotp
+        secrets_dir = tmp_path / "s"
+        init_secrets_dir(secrets_dir, kill_password="x")
+        auth = AuthManager.from_secrets_dir(secrets_dir)
+        secret = (secrets_dir / "totp_l2").read_text().strip()
+        valid_code = pyotp.TOTP(secret).now()
+        assert auth.verify_totp(CapabilityLevel.L2_CHIMERA, valid_code) is True
+
+
+
+from ataker.auth import main
+import sys
+
+
+class TestInitCLI:
+    def test_main_init_with_kill_password_arg(self, tmp_path, monkeypatch):
+        secrets_dir = tmp_path / "ataker"
+        monkeypatch.setattr(sys, "argv",
+            ["ataker.auth", "init", "--dir", str(secrets_dir), "--kill-password", "test_kill"])
+        main()
+        assert (secrets_dir / "totp_l2").is_file()
+        assert (secrets_dir / "kill_password_hash").is_file()
+        assert (secrets_dir / "ingest_token").is_file()
+
+    def test_main_init_prints_totp_uris(self, tmp_path, monkeypatch, capsys):
+        secrets_dir = tmp_path / "a"
+        monkeypatch.setattr(sys, "argv",
+            ["ataker.auth", "init", "--dir", str(secrets_dir), "--kill-password", "x"])
+        main()
+        captured = capsys.readouterr()
+        assert captured.out.count("otpauth://") == 3
+        assert "L2" in captured.out
+
+    def test_main_init_prompts_kill_password_if_missing(self, tmp_path, monkeypatch, capsys):
+        secrets_dir = tmp_path / "a"
+        monkeypatch.setattr(sys, "argv", ["ataker.auth", "init", "--dir", str(secrets_dir)])
+        monkeypatch.setattr("builtins.input", lambda _: "typed_password")
+        main()
+        auth = AuthManager.from_secrets_dir(secrets_dir)
+        assert auth.verify_kill_password("typed_password") is True
+
+
+
+class TestPublicAPI:
+    def test_auth_symbols_importable_from_ataker(self):
+        import ataker
+        assert hasattr(ataker, 'CapabilityLevel')
+        assert hasattr(ataker, 'PlannerCapabilities')
+        assert hasattr(ataker, 'AuthManager')
+        assert hasattr(ataker, 'init_secrets_dir')
+        assert hasattr(ataker, 'generate_ingest_token')
+
+    def test_existing_exports_still_work(self):
+        import ataker
+        assert hasattr(ataker, 'AttackGenerator')
+        assert hasattr(ataker, 'MutationEngine')
+        assert hasattr(ataker, 'RedTeamLoop')
+        assert hasattr(ataker, 'AttackVault')
