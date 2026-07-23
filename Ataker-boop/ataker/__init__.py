@@ -23,3 +23,13 @@ from .evals_ucs import (
     score_hit,
     score_http_mark,
 )
+
+
+# Auth subsystem (5-level access control)
+from .auth import (
+    CapabilityLevel,
+    PlannerCapabilities,
+    AuthManager,
+    init_secrets_dir,
+    generate_ingest_token,
+)
