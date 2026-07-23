@@ -1,9 +1,13 @@
 """Tests for ataker.auth — 5-level access control."""
 from __future__ import annotations
 
+import time
+
 import pytest
 
-from ataker.auth import CapabilityLevel, PlannerCapabilities
+import pyotp
+
+from ataker.auth import AuthManager, CapabilityLevel, PlannerCapabilities
 
 
 class TestCapabilityLevel:
@@ -57,3 +61,34 @@ class TestPlannerCapabilitiesLocked:
         caps = PlannerCapabilities.locked()
         caps.fully_locked = True
         assert caps.has(CapabilityLevel.L1_POISONS) is False
+
+
+def _make_auth_with_secret(level: CapabilityLevel, secret: str) -> AuthManager:
+    """Helper: AuthManager with one level's TOTP secret set."""
+    return AuthManager.from_totp_secrets({level: secret})
+
+
+class TestAuthManagerTOTP:
+    def test_valid_totp_passes(self):
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        valid_code = pyotp.TOTP(secret).now()
+        assert auth.verify_totp(CapabilityLevel.L2_CHIMERA, valid_code) is True
+
+    def test_invalid_totp_fails(self):
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        assert auth.verify_totp(CapabilityLevel.L2_CHIMERA, "000000") is False
+
+    def test_accepts_previous_window_code(self):
+        """±30s drift accepted (valid_window=1)."""
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        totp = pyotp.TOTP(secret, interval=30, digits=6)
+        previous_code = totp.at(int(time.time()) - 30)
+        assert auth.verify_totp(CapabilityLevel.L2_CHIMERA, previous_code) is True
+
+    def test_unknown_level_secret_fails(self):
+        """No secret configured for a level → always False."""
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, pyotp.random_base32())
+        assert auth.verify_totp(CapabilityLevel.L3_CODEBREAK, "123456") is False

@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from enum import IntEnum, nonmember
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Dict, Optional, Set
+
+import pyotp
 
 
 class CapabilityLevel(IntEnum):
@@ -58,3 +60,34 @@ class PlannerCapabilities:
         if level == CapabilityLevel.L5_KILL:
             return True  # kill доступен всегда (для остановки)
         return all(l in self.unlocked_levels for l in CapabilityLevel if 1 <= l <= level)
+
+
+class AuthManager:
+    """TOTP-check for L2-L4 + kill password for L5 + ingest token.
+
+    Each level uses a separate secret (leaking one does not compromise others).
+    """
+
+    def __init__(
+        self,
+        totp_secrets: Optional[Dict[CapabilityLevel, str]] = None,
+    ):
+        self._totp_secrets: Dict[CapabilityLevel, str] = dict(totp_secrets or {})
+
+    @classmethod
+    def from_totp_secrets(cls, secrets: Dict[CapabilityLevel, str]) -> "AuthManager":
+        """Create AuthManager with a dict of level->base32-secret."""
+        return cls(totp_secrets=secrets)
+
+    def set_totp_secret(self, level: CapabilityLevel, secret: str) -> None:
+        if level not in CapabilityLevel.UNLOCKABLE:
+            raise ValueError(f"Level {level.name} is not TOTP-unlockable")
+        self._totp_secrets[level] = secret
+
+    def verify_totp(self, level: CapabilityLevel, code: str) -> bool:
+        """Verify TOTP code for a level. +/-30s drift accepted."""
+        secret = self._totp_secrets.get(level)
+        if not secret:
+            return False
+        totp = pyotp.TOTP(secret, interval=30, digits=6)
+        return totp.verify(code, valid_window=1)
