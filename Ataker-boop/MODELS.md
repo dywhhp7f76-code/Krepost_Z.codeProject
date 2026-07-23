@@ -36,7 +36,8 @@ python scripts/ataker_hit_http.py --url http://127.0.0.1:8010 \
 
 ## Кандидаты (оператор выбирает)
 
-- dolphin / cyber / uncensored instruct 7–8B Q4/Q5 — хватает M5 32GB рядом с sandbox.
+- **Llama-3.1-8B-Instruct-abliterated** Q5_K_L (~5.64 GB) — основной атакер и judge.
+- **Llama-3.2-3B-Instruct-abliterated** Q4_K_M (~2.09 GB) — второй слот (executor).
 - Не грузить uncensored как guard песочницы — только attacker/judge.
 
 ## Запреты

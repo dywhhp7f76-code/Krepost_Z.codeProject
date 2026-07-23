@@ -8,7 +8,7 @@ Adversarial-тестирование SecurityPipeline. Грязная зона (
 Ataker-boop/
 ├── ataker/
 │   ├── __init__.py          # Экспорт основных классов
-│   ├── mutations.py         # 16 мутаций для обхода фильтров
+│   ├── mutations.py         # 17 мутаций для обхода фильтров
 │   ├── generator.py         # Генератор атак (15 категорий, шаблоны + LLM)
 │   ├── vault.py             # SQLite хранилище атак + результатов
 │   └── red_team_loop.py     # Основной цикл: генерация → тест → анализ → отчёт
@@ -23,18 +23,16 @@ Ataker-boop/
 - **Физическая изоляция**: атакующий работает на MacBook Air, отдельно от защиты (Mac Studio)
 - **Blind testing**: защита НЕ видит vault атак заранее
 - **Fail-open для атакующего**: если атака обошла защиту — это результат, не ошибка
-- **Модель**: Mistral-7B-instruct (для генерации новых атак через LLM)
+- **Модель**: Llama-3.1-8B-abliterated Q5_K_L (для генерации новых атак через LLM)
 
 ## Использование
 
 ```python
-import sys
-sys.path.insert(0, "Ataker-boop")
-
 from ataker import RedTeamLoop, AttackVault, MutationEngine
-from krepost.security.pipeline import SecurityPipeline
+from ataker.http_client import KrepostHTTPClient
 
-pipeline = SecurityPipeline(guard_client=...)
+# Атакер на Air → Крепость на Studio через HTTP
+pipeline = KrepostHTTPClient(base_url="http://<STUDIO_IP>:8000")
 vault = AttackVault(db_path="vault_data/attacks.db")
 loop = RedTeamLoop(pipeline=pipeline, vault=vault)
 
@@ -42,7 +40,7 @@ report = await loop.run(max_attacks=100)
 print(report.summary())
 ```
 
-## Мутации (16 стратегий)
+## Мутации (17 стратегий)
 
 | Мутация | Целевой слой | Описание |
 |---------|-------------|----------|

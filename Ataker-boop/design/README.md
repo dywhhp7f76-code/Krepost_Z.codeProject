@@ -51,7 +51,8 @@
    `generate_with_llm()`.
 
 3. **Чёрная коробка.** Творец не знает про Крепость напрямую. Исполнитель сам
-   формирует фидбек (`verdict` + `layer` + `bypassed`) из `SecurityContext`.
+   формирует фидбек (`verdict` + `bypassed`) из `SecurityContext`.
+   Без layer — настоящий black-box.
 
 4. **Человеческие техники > encoding.** Крепость сильна против технических атак
    (base64/ROT13), но слаба против психологических (FITD, Crescendo, social
