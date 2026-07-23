@@ -92,3 +92,54 @@ class TestAuthManagerTOTP:
         """No secret configured for a level → always False."""
         auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, pyotp.random_base32())
         assert auth.verify_totp(CapabilityLevel.L3_CODEBREAK, "123456") is False
+
+
+class TestAuthManagerLockout:
+    def test_three_failures_trigger_lockout(self):
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        auth.max_attempts = 3
+        auth.lockout_seconds = 300
+
+        for _ in range(3):
+            auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")
+
+        assert auth.is_locked_out(CapabilityLevel.L2_CHIMERA) is True
+
+    def test_lockout_rejects_even_valid_code(self):
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        auth.max_attempts = 3
+
+        for _ in range(3):
+            auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")
+
+        valid_code = pyotp.TOTP(secret).now()
+        assert auth.verify_totp(CapabilityLevel.L2_CHIMERA, valid_code) is False
+
+    def test_lockout_is_per_level(self):
+        """Lockout L2 does not block L3."""
+        auth = AuthManager.from_totp_secrets({
+            CapabilityLevel.L2_CHIMERA: pyotp.random_base32(),
+            CapabilityLevel.L3_CODEBREAK: pyotp.random_base32(),
+        })
+        auth.max_attempts = 2
+
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")
+
+        assert auth.is_locked_out(CapabilityLevel.L2_CHIMERA) is True
+        assert auth.is_locked_out(CapabilityLevel.L3_CODEBREAK) is False
+
+    def test_valid_code_resets_attempt_counter(self):
+        """Successful code resets the failure counter."""
+        secret = pyotp.random_base32()
+        auth = _make_auth_with_secret(CapabilityLevel.L2_CHIMERA, secret)
+        auth.max_attempts = 3
+
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")  # 1
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")  # 2
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, pyotp.TOTP(secret).now())  # reset
+        auth.verify_totp(CapabilityLevel.L2_CHIMERA, "wrong")  # 1 again
+
+        assert auth.is_locked_out(CapabilityLevel.L2_CHIMERA) is False

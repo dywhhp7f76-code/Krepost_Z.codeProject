@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from enum import IntEnum, nonmember
 from dataclasses import dataclass, field
+from collections import defaultdict
 from typing import Dict, Optional, Set
+import time
 
 import pyotp
 
@@ -63,31 +65,46 @@ class PlannerCapabilities:
 
 
 class AuthManager:
-    """TOTP-check for L2-L4 + kill password for L5 + ingest token.
-
-    Each level uses a separate secret (leaking one does not compromise others).
-    """
-
     def __init__(
         self,
         totp_secrets: Optional[Dict[CapabilityLevel, str]] = None,
+        max_attempts: int = 3,
+        lockout_seconds: int = 300,
     ):
         self._totp_secrets: Dict[CapabilityLevel, str] = dict(totp_secrets or {})
+        self.max_attempts = max_attempts
+        self.lockout_seconds = lockout_seconds
+        self._failed_attempts: Dict[CapabilityLevel, int] = defaultdict(int)
+        self._lockout_until: Dict[CapabilityLevel, float] = defaultdict(float)
 
     @classmethod
-    def from_totp_secrets(cls, secrets: Dict[CapabilityLevel, str]) -> "AuthManager":
-        """Create AuthManager with a dict of level->base32-secret."""
-        return cls(totp_secrets=secrets)
+    def from_totp_secrets(cls, secrets: Dict[CapabilityLevel, str], **kwargs) -> "AuthManager":
+        return cls(totp_secrets=secrets, **kwargs)
 
     def set_totp_secret(self, level: CapabilityLevel, secret: str) -> None:
         if level not in CapabilityLevel.UNLOCKABLE:
             raise ValueError(f"Level {level.name} is not TOTP-unlockable")
         self._totp_secrets[level] = secret
 
+    def is_locked_out(self, level: CapabilityLevel) -> bool:
+        return time.time() < self._lockout_until[level]
+
+    def lockout_seconds_remaining(self, level: CapabilityLevel) -> int:
+        remaining = self._lockout_until[level] - time.time()
+        return max(0, int(remaining))
+
     def verify_totp(self, level: CapabilityLevel, code: str) -> bool:
-        """Verify TOTP code for a level. +/-30s drift accepted."""
+        if self.is_locked_out(level):
+            return False
         secret = self._totp_secrets.get(level)
         if not secret:
             return False
         totp = pyotp.TOTP(secret, interval=30, digits=6)
-        return totp.verify(code, valid_window=1)
+        if totp.verify(code, valid_window=1):
+            self._failed_attempts[level] = 0
+            return True
+        self._failed_attempts[level] += 1
+        if self._failed_attempts[level] >= self.max_attempts:
+            self._lockout_until[level] = time.time() + self.lockout_seconds
+            self._failed_attempts[level] = 0
+        return False
