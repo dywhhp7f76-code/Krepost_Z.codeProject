@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Круглый стол — RoundTable</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1410;
+      --panel: #182018;
+      --ink: #e4e8df;
+      --muted: #8a9484;
+      --line: rgba(140, 160, 120, 0.25);
+      --ataker: #7a4a3a;
+      --krepost: #3a5a4a;
+      --operator: #4a5560;
+      --live: #6a9b6a;
+      --combat: #c45a5a;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --display: "IBM Plex Serif", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: var(--font); color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 20% 0%, rgba(90,120,70,.15), transparent 55%),
+        radial-gradient(700px 400px at 100% 100%, rgba(120,60,40,.12), transparent 50%),
+        linear-gradient(160deg, #0c100c, var(--bg) 40%, #141a14);
+    }
+    body { display: grid; grid-template-rows: auto 1fr auto; min-height: 100dvh; }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 20, 16, 0.75);
+      backdrop-filter: blur(8px);
+    }
+    h1 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      font-weight: 700;
+    }
+    h1 em { font-style: normal; color: #a8c090; }
+    .sub { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.9rem; max-width: 42rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.65rem; padding: 0.35rem 0.7rem; border-radius: 999px;
+      border: 1px solid var(--line); font-size: 0.8rem; font-weight: 600;
+    }
+    .badge.live { background: rgba(106,155,106,.2); color: #b5d9b5; }
+    .badge.combat { background: rgba(196,90,90,.2); color: #f0b0b0; }
+    #feed {
+      overflow-y: auto; padding: 1rem 1.25rem 1.5rem;
+      display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .utt {
+      max-width: min(42rem, 100%);
+      padding: 0.75rem 0.9rem;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      animation: rise .35s ease-out both;
+    }
+    .utt.ataker { background: color-mix(in srgb, var(--ataker) 35%, var(--panel)); align-self: flex-start; }
+    .utt.krepost { background: color-mix(in srgb, var(--krepost) 40%, var(--panel)); align-self: flex-end; }
+    .utt.operator { background: color-mix(in srgb, var(--operator) 45%, var(--panel)); align-self: center; max-width: 36rem; }
+    .who { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 0.35rem; font-weight: 600; }
+    .body { white-space: pre-wrap; line-height: 1.45; font-size: 0.95rem; }
+    .cites { margin-top: 0.45rem; font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 0.85rem 1.25rem 1.1rem;
+      background: rgba(15, 20, 16, 0.9);
+      display: grid; gap: 0.55rem;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    select, input[type=text], textarea {
+      background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+      border-radius: 10px; padding: 0.55rem 0.7rem; font: inherit;
+    }
+    textarea { width: 100%; min-height: 4.5rem; resize: vertical; }
+    button {
+      font: inherit; font-weight: 600; cursor: pointer;
+      border-radius: 10px; border: 1px solid var(--line);
+      background: #2a3a2a; color: var(--ink); padding: 0.55rem 0.95rem;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #err {
+      display: none; color: #f0b0b0; font-size: 0.85rem;
+      padding: 0.4rem 0.6rem; border-radius: 8px;
+      background: rgba(80,30,30,.4); border: 1px solid rgba(196,90,90,.4);
+    }
+    #err.show { display: block; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Круглый стол · <em>RoundTable</em></h1>
+    <p class="sub">Анонимный debrief: Ataker ↔ Крепость в масках. Сырые атаки и внутренности защиты в ленту не попадают.</p>
+    <div id="modeBadge" class="badge combat">режим…</div>
+  </header>
+  <main id="feed" aria-live="polite"></main>
+  <footer>
+    <div id="err"></div>
+    <div class="row">
+      <label>Спикер
+        <select id="speaker">
+          <option value="operator">operator</option>
+          <option value="ataker">ataker</option>
+          <option value="krepost">krepost</option>
+        </select>
+      </label>
+      <label style="flex:1">cites (id через запятую)
+        <input type="text" id="cites" placeholder="a7f3c21d, def9ab12" style="width:100%" />
+      </label>
+      <button type="button" id="refresh">Обновить</button>
+    </div>
+    <textarea id="body" placeholder="MaskedUtterance: обобщения, классы, слои, UCS — без payload и без рецептов обхода."></textarea>
+    <div class="row">
+      <button type="button" id="send">Отправить</button>
+      <span class="sub" id="hint"></span>
+    </div>
+  </footer>
+  <script>
+    const feedEl = document.getElementById("feed");
+    const errEl = document.getElementById("err");
+    const badge = document.getElementById("modeBadge");
+    const hint = document.getElementById("hint");
+    const sendBtn = document.getElementById("send");
+
+    function showErr(msg) {
+      errEl.textContent = msg || "";
+      errEl.classList.toggle("show", !!msg);
+    }
+
+    async function loadMode() {
+      const r = await fetch("/v1/roundtable/mode");
+      const m = await r.json();
+      const live = !!m.live_allowed;
+      badge.textContent = m.mode + (live ? " · live" : " · live закрыт");
+      badge.className = "badge " + (live ? "live" : "combat");
+      sendBtn.disabled = !live;
+      hint.textContent = live
+        ? ("live ok · " + (m.reason || ""))
+        : ("CombatMode: только реплеи. " + (m.reason || ""));
+      return m;
+    }
+
+    function renderItem(u) {
+      const div = document.createElement("div");
+      div.className = "utt " + u.speaker;
+      const cites = (u.cites || []).join(", ");
+      div.innerHTML =
+        '<div class="who">' + u.speaker + "</div>" +
+        '<div class="body"></div>' +
+        (cites ? '<div class="cites">cites: ' + cites + "</div>" : "");
+      div.querySelector(".body").textContent = u.body;
+      return div;
+    }
+
+    async function loadFeed() {
+      const r = await fetch("/v1/roundtable/feed?limit=200");
+      const data = await r.json();
+      feedEl.innerHTML = "";
+      (data.items || []).forEach((u) => feedEl.appendChild(renderItem(u)));
+      feedEl.scrollTop = feedEl.scrollHeight;
+    }
+
+    async function send() {
+      showErr("");
+      const speaker = document.getElementById("speaker").value;
+      const body = document.getElementById("body").value;
+      const cites = document.getElementById("cites").value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const r = await fetch("/v1/roundtable/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speaker, body, cites }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const d = data.detail;
+        const msg = typeof d === "object"
+          ? ((d.reason_code || "rejected") + (d.detail ? ": " + d.detail : ""))
+          : (data.detail || r.statusText);
+        showErr(msg);
+        return;
+      }
+      document.getElementById("body").value = "";
+      await loadFeed();
+    }
+
+    document.getElementById("send").onclick = send;
+    document.getElementById("refresh").onclick = async () => {
+      showErr("");
+      await loadMode();
+      await loadFeed();
+    };
+
+    (async () => {
+      try {
+        await loadMode();
+        await loadFeed();
+      } catch (e) {
+        showErr(String(e));
+      }
+    })();
+  </script>
+</body>
+</html>

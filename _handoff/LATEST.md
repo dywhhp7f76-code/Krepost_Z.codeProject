@@ -9,6 +9,22 @@
 
 ---
 
+- feat(RoundTable): scaffold DebriefBroker + schemas + ModeGate + Air UI `:8011`
+  (`krepost/roundtable/`, `scripts/serve_roundtable_air.sh`); Ataker `sealed.py`
+  SealedEnvelope; Probnoki #60; Ataker `test_sealed_receipts`.
+- Коммит: (ожидает оператора)
+- Проверка: `.venv/bin/python -m pytest Probnoki/test_60_roundtable_broker.py -q`
+
+---
+
+- docs(canon): Round Table Debrief — Combat/Debrief, DebriefBroker (анонимный
+  стол), SealedRedLoop, UI на Air; жопы закрыты redact. Файл
+  `_handoff/ROUNDTABLE_DEBRIEF_SPEC.md` LOCKED.
+- Коммит: (ожидает оператора)
+- Проверка: файл на диске; LOCKED IDs RoundTable/DebriefBroker/SealedEnvelope.
+
+---
+
 - ops(добить): волна закрыта по коду/докам — BGE-M3+Chroma, live API `:8000`,
   agent harness, episodic-in-loop, `scripts/install_launchd_studio.sh` (идемпотентный
   LaunchAgent `com.hervam.krepost.serve`). ROADMAP: next = Ataker / Telegram позже

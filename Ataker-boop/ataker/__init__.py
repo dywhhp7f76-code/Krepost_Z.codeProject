@@ -33,3 +33,6 @@ from .auth import (
     init_secrets_dir,
     generate_ingest_token,
 )
+
+# Sealed envelopes (Round Table / SealedRedLoop — payload stays on Air)
+from .sealed import SealedEnvelope, SealedStore, attack_id_for

@@ -60,6 +60,16 @@ Ataker base URL: `http://127.0.0.1:8010`
 # Studio :8000 скрипт отвергает без FORCE_STUDIO=1
 ```
 
+## Round Table (Air)
+
+Канон: `_handoff/ROUNDTABLE_DEBRIEF_SPEC.md`. UI **не** Studio `:8000`.
+
+```bash
+./scripts/serve_roundtable_air.sh
+# http://127.0.0.1:8011/roundtable
+# default DebriefMode (ROUNDTABLE_ATTACK_LOCKED=1)
+```
+
 ## Следующее
 
 1. ~~`scripts/serve_sandbox_air.sh`~~ ✅
@@ -70,3 +80,5 @@ Ataker base URL: `http://127.0.0.1:8010`
 6. ~~HierarchicalTrace в /v1/query metadata~~ ✅ (Probnoki #57)
 7. ~~ContextReader + OccReader pool~~ ✅
 8. Live smoke Air: sandbox + ataker + ingest vault_sandbox
+9. ~~Round Table scaffold~~ ✅ (`serve_roundtable_air.sh`, Probnoki #60)
+10. Wire LLM speakers + SealedRedLoop nightly → receipts
