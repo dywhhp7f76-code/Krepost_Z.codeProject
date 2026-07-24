@@ -74,6 +74,22 @@
 
 ---
 
+## 5. LangChain / LlamaIndex (**для обоих** — уже загружено)
+
+Выжимки + URL: `sources/05-langchain-llamaindex.md`  
+Канон vault: `vault/06-Research/Agents_Engineering/frameworks/`
+
+| Что | Ссылка |
+|-----|--------|
+| LC Going to production ⭐ | https://docs.langchain.com/oss/python/deepagents/going-to-production |
+| LC short-term memory | https://docs.langchain.com/oss/python/langchain/short-term-memory |
+| LC tools | https://docs.langchain.com/oss/python/langchain/tools |
+| LI agent memory ⭐ | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/memory/ |
+| LI tools | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/tools/ |
+| LI llms.txt | https://developers.llamaindex.ai/llms.txt |
+
+---
+
 ## Твой фильтр (заполни)
 
 ```
@@ -85,6 +101,8 @@ PortSwigger SQLi:   ✅ / ⏸ / ❌
 MITRE ATLAS:        ✅ / ⏸ / ❌
 MITRE ATT&CK Ent.:  ✅ / ⏸ / ❌
 Exploit-DB sample:  ✅ / ⏸ / ❌
+LangChain docs:     ✅ / ⏸ / ❌
+LlamaIndex docs:    ✅ / ⏸ / ❌
 ```
 
 Кинь сюда или в план §4 — тогда уже **добавлю отобранное** в KB, а не всё подряд.

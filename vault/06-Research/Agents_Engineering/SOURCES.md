@@ -56,30 +56,45 @@
 
 ---
 
-## 3. LangChain / LlamaIndex — Memory & Tools (где «защита»)
+## 3. LangChain / LlamaIndex — Memory & Tools (**для обоих**)
 
-### LangChain / LangGraph
+> **Загружено в vault** (выжимки + актуальные URL, не полный HTML mirror):  
+> - `frameworks/langchain_memory_tools.md`  
+> - `frameworks/llamaindex_memory_tools.md`  
+> - `frameworks/FOR_BOTH.md` (attack vs defense)  
+> Зеркала: `Ataker-boop/knowledge/sources/05-langchain-llamaindex.md`,  
+> `docs/security/knowledge-bases/sources/05-langchain-llamaindex.md`
+
+### LangChain / LangGraph / Deep Agents (канон: docs.langchain.com)
 | Тема | URL |
 |------|-----|
-| Docs home | https://python.langchain.com/docs/ |
-| LangGraph memory concepts | https://langchain-ai.github.io/langgraph/concepts/memory/ |
-| LangGraph persistence | https://langchain-ai.github.io/langgraph/concepts/persistence/ |
-| Tool calling (how-to) | https://python.langchain.com/docs/how_to/tool_calling/ |
-| Tools conceptual | https://python.langchain.com/docs/concepts/tools/ |
-| Agents overview | https://python.langchain.com/docs/tutorials/agents/ |
-| API: BaseChatMemory | https://api.python.langchain.com/en/latest/langchain/memory/langchain.memory.chat_memory.BaseChatMemory.html |
+| Docs home | https://docs.langchain.com/ |
+| Short-term memory | https://docs.langchain.com/oss/python/langchain/short-term-memory |
+| Long-term memory | https://docs.langchain.com/oss/python/langchain/long-term-memory |
+| Tools | https://docs.langchain.com/oss/python/langchain/tools |
+| Agents | https://docs.langchain.com/oss/python/langchain/agents |
+| Guardrails | https://docs.langchain.com/oss/python/langchain/guardrails |
+| HITL | https://docs.langchain.com/oss/python/langchain/human-in-the-loop |
+| LangGraph persistence | https://docs.langchain.com/oss/python/langgraph/persistence |
+| Deep Agents memory | https://docs.langchain.com/oss/python/deepagents/memory |
+| **Going to production** ⭐ | https://docs.langchain.com/oss/python/deepagents/going-to-production |
+| Permissions | https://docs.langchain.com/oss/python/deepagents/permissions |
 
-**Что искать в доках Крепости:** границы tool sandbox, human-in-the-loop, checkpointer (session isolation), ограничение tool args — аналоги нашего `UrlGuard` / fail-closed harness.
+**Крепость:** tool sandbox, HITL, checkpointer isolation, read-only shared policies — аналоги `UrlGuard` / fail-closed.  
+**Ataker:** shared-memory injection, thread stuffing, tool-arg abuse — сценарии для Planner/harness.
 
-### LlamaIndex
+### LlamaIndex (канон: developers.llamaindex.ai)
 | Тема | URL |
 |------|-----|
-| Agent memory | https://docs.llamaindex.ai/en/stable/understanding/agent/memory/ |
-| Custom / runtime memory | https://docs.llamaindex.ai/en/stable/examples/memory/custom_memory/ |
-| Agents overview | https://docs.llamaindex.ai/en/stable/understanding/putting_it_all_together/agents/ |
-| Tools module | https://docs.llamaindex.ai/en/stable/module_guides/deploying/agents/tools/ |
-| Chat stores | https://docs.llamaindex.ai/en/stable/module_guides/storing/chat_stores/ |
-| PII / context transform (пример защиты) | https://docs.llamaindex.ai/en/stable/examples/prompts/prompts_rag/ |
+| Docs home | https://developers.llamaindex.ai/ |
+| **Agent memory** ⭐ | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/memory/ |
+| Agent tools | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/tools/ |
+| Agents | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/ |
+| Vector stores | https://developers.llamaindex.ai/python/framework/module_guides/storing/vector_stores/ |
+| Evaluation | https://developers.llamaindex.ai/python/framework/module_guides/evaluating/ |
+| llms.txt / MCP | https://developers.llamaindex.ai/llms.txt · https://developers.llamaindex.ai/mcp |
+
+Старые `docs.llamaindex.ai/en/stable/...` — не опираться.
 
 ---
 

@@ -68,6 +68,22 @@ Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
 ---
 
+## 5. LangChain / LlamaIndex (**для обоих** — уже загружено)
+
+Выжимки + URL: `sources/05-langchain-llamaindex.md`  
+Канон vault: `vault/06-Research/Agents_Engineering/frameworks/`
+
+| Что | Ссылка |
+|-----|--------|
+| LC Going to production ⭐ | https://docs.langchain.com/oss/python/deepagents/going-to-production |
+| LC permissions | https://docs.langchain.com/oss/python/deepagents/permissions |
+| LC guardrails | https://docs.langchain.com/oss/python/langchain/guardrails |
+| LC HITL | https://docs.langchain.com/oss/python/langchain/human-in-the-loop |
+| LI agent memory ⭐ | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/memory/ |
+| LI tools | https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/tools/ |
+
+---
+
 ## Твой фильтр
 
 ```
@@ -79,6 +95,8 @@ SRE Alerting:            ✅ / ⏸ / ❌
 SRE Cascading Failures:  ✅ / ⏸ / ❌
 Azure AI sec practices:  ✅ / ⏸ / ❌
 LLM security planning:   ✅ / ⏸ / ❌
+LangChain docs:          ✅ / ⏸ / ❌
+LlamaIndex docs:         ✅ / ⏸ / ❌
 ```
 
 Кинь ответ — заведу только отобранное в `docs/security/knowledge-bases/sources/`.

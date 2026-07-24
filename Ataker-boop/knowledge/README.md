@@ -15,13 +15,14 @@ Markdown, который оператор и агент пополняют вр�
 ```
 knowledge/
 ├── README.md                 ← ты здесь
-├── SOURCES.md                ← канон внешних баз (OWASP / PortSwigger / MITRE / Exploit-DB)
+├── SOURCES.md                ← канон внешних баз (+ LC/LI для обоих)
 ├── 00-TEMPLATE.md
 ├── sources/                  ← выжимки + маппинг на AttackCategory / слои Крепости
 │   ├── 01-owasp-llm-top10.md
 │   ├── 02-portswigger.md
 │   ├── 03-mitre-attack.md
-│   └── 04-exploit-db.md
+│   ├── 04-exploit-db.md
+│   └── 05-langchain-llamaindex.md  ← shared с Крепостью (угол атаки)
 ├── attack_techniques.md      ← живой индекс техник
 ├── defense_krepost.md        ← как устроена жертва (для Творца = чёрный ящик + слабости)
 ├── case_studies.md

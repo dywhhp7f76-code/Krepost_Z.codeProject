@@ -13,8 +13,10 @@
 | **CNCF Security** | изоляция контейнеров/процессов, lifecycle |
 | **Google SRE Book** | Monitoring, Alerting, Cascading Failures |
 | **Azure AI / LLM security** | практики защиты ИИ-сервисов и API |
+| **LangChain / LlamaIndex** | memory isolation, tools HITL, shared-memory injection |
 
-Оператор отмечает ✅/⏸/❌ → потом карточки в `sources/`.
+Оператор отмечает ✅/⏸/❌ → потом карточки в `sources/`.  
+Уже загружено: `sources/05-langchain-llamaindex.md` (канон в vault `Agents_Engineering/frameworks/`).
 
 ## Симметрия с Атакером (уже в Red Team KB)
 

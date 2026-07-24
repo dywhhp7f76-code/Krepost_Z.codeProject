@@ -15,8 +15,9 @@
 | [[arxiv/Robustness_LLM]] | arXiv: Robustness of LLMs |
 | [[arxiv/Agentic_Workflow_Optimization]] | arXiv: Agentic Workflow Optimization |
 | [[deeplearning_ai/courses]] | DeepLearning.AI short courses |
-| [[frameworks/langchain_memory_tools]] | LangChain Memory + Tools (где «защита») |
-| [[frameworks/llamaindex_memory_tools]] | LlamaIndex Memory + Tools |
+| [[frameworks/langchain_memory_tools]] | LangChain / LangGraph Memory + Tools + production security |
+| [[frameworks/llamaindex_memory_tools]] | LlamaIndex Memory blocks + Tools |
+| [[frameworks/FOR_BOTH]] | Для обоих: attack vs defense reading path |
 
 ## Связь с Крепостью
 
