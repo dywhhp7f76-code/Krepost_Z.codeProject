@@ -14,6 +14,7 @@
 | `05_Knowledge_Base/` | Книги, схемы, справочники |
 | `05-Archive/` | Холодный архив |
 | `06-Research/` | Статьи и исследовательские заметки |
+| `06-Research/Agents_Engineering/` | **Инж. база агентов:** arXiv / DL.AI / LangChain+LlamaIndex → [[06-Research/Agents_Engineering/00-MOC\|MOC]] |
 | `07-Krepost_Architecture/` | Архитектура Крепости |
 | `07-promts/` | Черновики промптов |
 | `08-Logs/` | Операционные логи |

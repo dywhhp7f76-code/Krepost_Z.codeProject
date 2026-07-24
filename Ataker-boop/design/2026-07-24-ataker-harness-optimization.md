@@ -138,6 +138,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 - [ ] _(пример)_ 2026-07-24 | hervam | кейс облачного jailbreak из чата | в KB + multi-turn seed
 - [x] 2026-07-24 | hervam | базы Атакера: **OWASP LLM Top 10**, **PortSwigger** (Injection / Access / Logic), **MITRE ATT&CK**, **Exploit-DB** | → `Ataker-boop/knowledge/`
 - [x] 2026-07-24 | hervam | базы Крепости: **NIST CSF**, **CNCF Security**, **Google SRE** (Monitoring/Alerting/Cascading), **Azure AI security** | → `docs/security/knowledge-bases/SOURCES.md` (фильтр ✅/⏸/❌)
+- [x] 2026-07-24 | hervam | инж. база агентов: **arXiv** (Agent Security / Robustness / Workflow Opt), **DeepLearning.AI**, **LangChain+LlamaIndex Memory/Tools** | → `vault/06-Research/Agents_Engineering/`
 - [ ] 
 
 ### Агент / ZCode добавляет ↓
