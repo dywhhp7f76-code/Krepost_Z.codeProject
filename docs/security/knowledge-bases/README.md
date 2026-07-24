@@ -43,5 +43,7 @@
 
 - [ ] YYYY-MM-DD | название | URL | зачем _
 
+**Планирование:** `docs/planning/CALENDAR.md` · **Отложено:** `docs/deferred/defense/`
+
 План harness §4 тоже принимает defense-строки:  
 `Ataker-boop/design/2026-07-24-ataker-harness-optimization.md`

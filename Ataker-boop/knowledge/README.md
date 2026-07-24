@@ -33,8 +33,10 @@ knowledge/
 ## Зеркало для Крепости (defense)
 
 Атакующие базы здесь. **Защитные** (митации, паттерны, детекторы) — в  
-`docs/security/knowledge-bases/` и кратко в `defense_krepost.md`.  
-Оператор сказал, что нашёл такие же сильные базы для Крепости — складывай ссылки туда + §4 плана.
+`docs/security/knowledge-bases/` и кратко в `defense_krepost.md`.
+
+**Планирование:** `docs/planning/CALENDAR.md` (учёба → десерт).  
+**Отложено:** `docs/deferred/attack/` (EDB, classic injection, ATT&CK Ent.).
 
 ## Связь с кодом
 

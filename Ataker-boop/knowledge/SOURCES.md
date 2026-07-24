@@ -2,10 +2,19 @@
 
 > Не всё сразу в KB. Отметь что берём / что в мусор.  
 > Формат ответа: `✅ взять` / `⏸ потом` / `❌ мимо` + комментарий в §4 плана harness.
+>
+> **Календарь:** `docs/planning/CALENDAR.md` · **NOW учёба:** `docs/planning/NOW-STUDY.md`  
+> **Парковка потом:** `docs/deferred/` (не удалено — отложено)
+
+| Метка | Смысл |
+|-------|--------|
+| **NOW** | учить до 2026-08-28 |
+| **DEFERRED** | лежит в `docs/deferred/attack/`, unlock ≥ 2026-09-12 |
+| **DESSERT** | сложный код, не чтение — с 2026-09-12 |
 
 ---
 
-## 1. OWASP LLM / GenAI Top 10
+## 1. OWASP LLM / GenAI Top 10 · **NOW**
 
 | Что | Ссылка |
 |-----|--------|
@@ -24,6 +33,9 @@
 ## 2. PortSwigger Web Security Academy
 
 Ты просил: **Injection**, **Broken Access Control**, **Business Logic**. Плюс бонус — у них уже есть **Web LLM attacks**.
+
+- **NOW:** Web LLM attacks → Logic → Access  
+- **DEFERRED:** SQLi/SSTI/XXE/NoSQL/smuggling labs → `docs/deferred/attack/portswigger-classic-injection.md`
 
 | Тема | Теория | Labs / path |
 |------|--------|-------------|
@@ -46,6 +58,9 @@
 
 ## 3. MITRE — ATT&CK + ATLAS (для AI важнее ATLAS)
 
+- **NOW:** ATLAS  
+- **DEFERRED:** ATT&CK Enterprise широко → `docs/deferred/attack/mitre-attack-enterprise.md`
+
 | Что | Ссылка | Зачем |
 |-----|--------|-------|
 | **MITRE ATLAS** (AI/ML TTPs) ⭐ | https://atlas.mitre.org/ | цепочки именно против AI |
@@ -59,7 +74,9 @@
 
 ---
 
-## 4. Exploit-DB
+## 4. Exploit-DB · **DEFERRED** (не ядро NOW)
+
+Парковка: `docs/deferred/attack/exploit-db-deep.md`
 
 | Что | Ссылка |
 |-----|--------|
@@ -74,7 +91,7 @@
 
 ---
 
-## 5. LangChain / LlamaIndex (**для обоих** — уже загружено)
+## 5. LangChain / LlamaIndex (**для обоих** — уже загружено) · **NOW** (A4)
 
 Выжимки + URL: `sources/05-langchain-llamaindex.md`  
 Канон vault: `vault/06-Research/Agents_Engineering/frameworks/`

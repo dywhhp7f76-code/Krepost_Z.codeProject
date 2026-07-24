@@ -2,10 +2,17 @@
 
 > Формат: `✅ взять` / `⏸ потом` / `❌ мимо`.  
 > Живые ссылки; в vault кладём только отобранное.
+>
+> **Календарь:** `docs/planning/CALENDAR.md`  
+> **NOW:** §3 LangChain/LlamaIndex (A4, до 21 Aug)  
+> **DEFERRED:** arXiv deep + DL.AI + workflow-opt → `docs/deferred/agents/`
 
 ---
 
-## 1. arXiv — поисковые запросы (для агентов)
+## 1. arXiv — поисковые запросы (для агентов) · **DEFERRED** deep
+
+Парковка: `docs/deferred/agents/arxiv-deep-ingest.md` · workflow: `…/workflow-optimization.md`  
+Сейчас: можно глянуть заголовки; глубокое чтение ≥ **2026-09-12** после фильтра.
 
 | Запрос | Search URL |
 |--------|------------|
@@ -45,7 +52,9 @@
 
 ---
 
-## 2. DeepLearning.AI — Short Courses (агенты / tools)
+## 2. DeepLearning.AI — Short Courses (агенты / tools) · **DEFERRED**
+
+Парковка: `docs/deferred/agents/deeplearning-ai-courses.md`
 
 | Курс | URL | Фокус |
 |------|-----|-------|

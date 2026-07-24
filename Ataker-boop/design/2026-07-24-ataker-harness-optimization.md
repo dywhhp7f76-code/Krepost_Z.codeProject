@@ -124,7 +124,17 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 | 10 | L2–L5 capabilities gate (auth уже есть) | wire `AuthManager` → Planner | auth ✅ | ⏳ |
 
 **Сейчас в коде есть:** HTTP hit, UCS, vault, mutations, generator, red_team_loop, auth 5 levels, **stub harness 1–5**.  
-**Дальше:** LLM Planner (6), multi-turn (7).
+**Дальше (ДЕСЕРТ, не раньше 2026-09-12):** LLM Planner (6), multi-turn (7), YAML (8), Chroma (9), Auth gate (10).
+
+### Календарь оператора (учёба → десерт)
+
+| Док | Путь |
+|-----|------|
+| Даты в календарь | `docs/planning/CALENDAR.md` |
+| Что учить NOW | `docs/planning/NOW-STUDY.md` |
+| Парковка + десерт | `docs/deferred/` · `docs/deferred/DESSERT.md` |
+
+Горизонт: **2026-07-24 → 2026-09-25** (волна 1 десерта); хвост D до **2026-10-09**.
 
 ---
 
@@ -146,6 +156,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 - [x] 2026-07-24 | agent | карта PyRIT/garak/Promptfoo/Inspect + очередь H1–H7 | этот файл
 - [x] 2026-07-24 | agent | код шагов 1–5: target/feedback/types/stub planner/loop/CLI + tests | ataker/*.py
 - [x] 2026-07-24 | agent | KB каркас + маппинг OWASP/PortSwigger/MITRE/EDB + defense slot + loader | knowledge/
+- [x] 2026-07-24 | agent | резал/парковал нерелевантное-сейчас → `docs/deferred/` + календарь 1.5–2 мес | `docs/planning/CALENDAR.md`
 - [ ] 
 
 ---
@@ -177,6 +188,7 @@ PYTHONPATH=. python -m ataker.harness --dry-run --batch 3 --max-iter 2
 | 2026-07-24 | Старт: аналоги harness, оптимизационные цели H1–H7, очередь, слот для оператора |
 | 2026-07-24 | Код: `KrepostHttpTarget`, `FeedbackEntry`, stub `Planner`, `AdversarialLoop`, `python -m ataker.harness` |
 | 2026-07-24 | KB: OWASP / PortSwigger / MITRE / Exploit-DB карточки + defense slot для Крепости |
+| 2026-07-24 | Planning: NOW-STUDY + CALENDAR (→09-25) + deferred/dessert парковка |
 
 ---
 

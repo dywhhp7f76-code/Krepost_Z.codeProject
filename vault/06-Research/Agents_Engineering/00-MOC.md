@@ -26,8 +26,15 @@
 - Defense KB: `docs/security/knowledge-bases/`
 - Ataker KB: `Ataker-boop/knowledge/`
 
+## Календарь / парковка
+
+- NOW учёба: `docs/planning/NOW-STUDY.md` (LC/LI = A4)
+- Даты: `docs/planning/CALENDAR.md`
+- Deferred agents: `docs/deferred/agents/` (arXiv, DL.AI, workflow-opt)
+
 ## Как пополнять
 
 1. Оператор фильтрует `SOURCES` (✅/⏸/❌).
 2. Агент заносит карточки статей/доков.
 3. `python ingest_vault.py` на Studio после синка.
+4. Новое «интересное, но не сейчас» → `docs/deferred/`, не в hot path.

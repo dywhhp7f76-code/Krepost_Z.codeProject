@@ -2,10 +2,17 @@
 
 > Зеркало атакующего `Ataker-boop/knowledge/SOURCES.md`.  
 > Отметь: `✅ взять` / `⏸ потом` / `❌ мимо` → потом занесём только отобранное.
+>
+> **Календарь:** `docs/planning/CALENDAR.md` · **Парковка:** `docs/deferred/defense/`
+
+| Метка | Смысл |
+|-------|--------|
+| **NOW** | CSF Protect/Detect/Respond + SRE Monitoring/Cascading (до 14 Aug) |
+| **DEFERRED** | CNCF/K8s deep, полный NIST mapping, Azure deep, SRE Alerting |
 
 ---
 
-## 1. NIST — Cybersecurity Framework (CSF)
+## 1. NIST — Cybersecurity Framework (CSF) · **NOW** (обзор) / deep → deferred
 
 Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
@@ -22,7 +29,9 @@ Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
 ---
 
-## 2. CNCF — Security (контейнеры / изоляция)
+## 2. CNCF — Security (контейнеры / изоляция) · **DEFERRED**
+
+Парковка: `docs/deferred/defense/cncf-k8s-deep.md`
 
 | Что | Ссылка |
 |-----|--------|
@@ -39,6 +48,9 @@ Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
 ## 3. Google SRE Book — Monitoring / Alerting / Cascading Failures
 
+- **NOW:** Monitoring + Cascading Failures  
+- **DEFERRED:** Practical Alerting / Overload / postmortem → `docs/deferred/defense/sre-alerting-overload.md`
+
 Онлайн-книга (бесплатно): https://sre.google/sre-book/table-of-contents/
 
 | Глава (то, что ты назвал) | Ссылка |
@@ -54,7 +66,9 @@ Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
 ---
 
-## 4. Microsoft — Azure / AI security best practices
+## 4. Microsoft — Azure / AI security best practices · **NOW** (один обзор) / deep → deferred
+
+Парковка deep: `docs/deferred/defense/azure-ai-security-deep.md`
 
 | Что | Ссылка |
 |-----|--------|
@@ -68,7 +82,7 @@ Defense in Depth + Govern/Identify/Protect/Detect/Respond/Recover.
 
 ---
 
-## 5. LangChain / LlamaIndex (**для обоих** — уже загружено)
+## 5. LangChain / LlamaIndex (**для обоих** — уже загружено) · **NOW** (A4)
 
 Выжимки + URL: `sources/05-langchain-llamaindex.md`  
 Канон vault: `vault/06-Research/Agents_Engineering/frameworks/`
