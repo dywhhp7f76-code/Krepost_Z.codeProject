@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
 from ataker.feedback import FeedbackEntry, OperatorTrace, hit_to_trace
+from ataker.knowledge_loader import load_snippets
 from ataker.planner import Planner, StubPlanner
 from ataker.planner_types import PlannerInput, PlannerOutput
 from ataker.recipe_executor import build_batch
@@ -77,6 +78,8 @@ class AdversarialLoop:
     stop_on_bypass: bool = True
     seed: int = 0
     report_dir: Optional[Path] = None
+    use_knowledge: bool = True
+    knowledge_max_chars: int = 800
 
     def run(self) -> AdversarialReport:
         planner = self.planner or StubPlanner(seed=self.seed)
@@ -87,12 +90,19 @@ class AdversarialLoop:
         total_b = total_x = total_e = total_hits = 0
         stop_reason = "max_iterations"
         last_hypothesis = ""
+        kb_snips: List[str] = []
+        if self.use_knowledge:
+            try:
+                kb_snips = load_snippets(max_chars=self.knowledge_max_chars)
+            except OSError:
+                kb_snips = []
 
         for it in range(1, self.max_iterations + 1):
             inp = PlannerInput(
                 iteration=it,
                 feedback=list(feedback_hist),
                 batch_size=self.batch_size,
+                knowledge_snippets=list(kb_snips),
             )
             # Страж black-box
             view = inp.planner_view()

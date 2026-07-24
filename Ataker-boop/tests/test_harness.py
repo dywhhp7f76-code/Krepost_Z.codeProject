@@ -18,6 +18,7 @@ from ataker.planner import StubPlanner
 from ataker.planner_types import PlannedAttack, PlannerInput
 from ataker.recipe_executor import build_batch, build_payload_from_recipe
 from ataker.target_http import HitResult, KrepostHttpTarget
+from ataker.knowledge_loader import catalog_summary, list_source_cards, load_snippets
 
 
 class TestKrepostHttpTargetClassify:
@@ -175,6 +176,20 @@ class _FakeTarget:
             latency_ms=1.0,
             error="boom",
         )
+
+
+class TestKnowledgeLoader:
+    def test_source_cards_exist(self):
+        cards = list_source_cards()
+        names = {p.name for p in cards}
+        assert "01-owasp-llm-top10.md" in names
+        assert "03-mitre-attack.md" in names
+        assert "OWASP" in catalog_summary() or "owasp" in catalog_summary().lower() or len(cards) >= 4
+
+    def test_snippets_nonempty(self):
+        snips = load_snippets(max_chars=400)
+        assert len(snips) >= 4
+        assert any("OWASP" in s or "LLM" in s for s in snips)
 
 
 class TestAdversarialLoop:

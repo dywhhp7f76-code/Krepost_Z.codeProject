@@ -120,7 +120,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 | 6 | LLM Planner (Llama abliterated) + system prompt | `ataker/planner.py` | LM Studio на Air | ⏳ |
 | 7 | Multi-turn SessionStrategy (FITD/Crescendo skeleton) | `ataker/strategies/multi_turn.py` | 5 | ⏳ |
 | 8 | YAML/JSON strategy pack (Promptfoo-style) | `ataker/strategies/*.yaml` | 5 | ⏳ |
-| 9 | RAG knowledge hooks | `ataker/knowledge/` | спека §3 | ⏳ |
+| 9 | RAG knowledge hooks | `ataker/knowledge/` + `knowledge_loader.py` (snippets now; Chroma later) | спека §3 | 🟡 loader ✅, Chroma ⏳ |
 | 10 | L2–L5 capabilities gate (auth уже есть) | wire `AuthManager` → Planner | auth ✅ | ⏳ |
 
 **Сейчас в коде есть:** HTTP hit, UCS, vault, mutations, generator, red_team_loop, auth 5 levels, **stub harness 1–5**.  
@@ -136,12 +136,15 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 ### Оператор добавляет ↓
 
 - [ ] _(пример)_ 2026-07-24 | hervam | кейс облачного jailbreak из чата | в KB + multi-turn seed
+- [x] 2026-07-24 | hervam | базы Атакера: **OWASP LLM Top 10**, **PortSwigger** (Injection / Access / Logic), **MITRE ATT&CK**, **Exploit-DB** | → `Ataker-boop/knowledge/`
+- [x] 2026-07-24 | hervam | такие же сильные базы **для Крепости** (defense) | → `docs/security/knowledge-bases/` (допиши конкретные URL)
 - [ ] 
 
 ### Агент / ZCode добавляет ↓
 
 - [x] 2026-07-24 | agent | карта PyRIT/garak/Promptfoo/Inspect + очередь H1–H7 | этот файл
 - [x] 2026-07-24 | agent | код шагов 1–5: target/feedback/types/stub planner/loop/CLI + tests | ataker/*.py
+- [x] 2026-07-24 | agent | KB каркас + маппинг OWASP/PortSwigger/MITRE/EDB + defense slot + loader | knowledge/
 - [ ] 
 
 ---
@@ -172,6 +175,7 @@ PYTHONPATH=. python -m ataker.harness --dry-run --batch 3 --max-iter 2
 |------|-----|
 | 2026-07-24 | Старт: аналоги harness, оптимизационные цели H1–H7, очередь, слот для оператора |
 | 2026-07-24 | Код: `KrepostHttpTarget`, `FeedbackEntry`, stub `Planner`, `AdversarialLoop`, `python -m ataker.harness` |
+| 2026-07-24 | KB: OWASP / PortSwigger / MITRE / Exploit-DB карточки + defense slot для Крепости |
 
 ---
 

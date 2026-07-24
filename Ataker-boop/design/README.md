@@ -16,6 +16,9 @@
 
 Карта «такого типа» обвязок, цели H1–H7 (black-box feedback, recipes, cost, multi-turn, scorers, target), очередь внедрения и **слот «Твой вход»** — оператор дописывает идеи в путь, агент не затирает.
 
+Базы Red Team (OWASP / PortSwigger / MITRE / Exploit-DB): `../knowledge/SOURCES.md`.  
+Defense-зеркало для Крепости: `../../docs/security/knowledge-bases/README.md`.
+
 ### [`2026-07-22-planner-executor-attacker-design.md`](./2026-07-22-planner-executor-attacker-design.md)
 
 **Архитектура «Planner-Executor» (Творец / Исполнитель) для Ataker-boop v2.**

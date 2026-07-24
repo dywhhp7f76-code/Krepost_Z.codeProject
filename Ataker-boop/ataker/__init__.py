@@ -31,6 +31,7 @@ from .planner_types import PlannedAttack, PlannerInput, PlannerOutput
 from .planner import StubPlanner
 from .recipe_executor import build_batch, build_payload_from_recipe
 from .adversarial_loop import AdversarialLoop, AdversarialReport
+from .knowledge_loader import catalog_summary, load_snippets, list_source_cards
 
 # Auth subsystem (5-level) — optional deps: pyotp, argon2-cffi ([planner] extra)
 try:
