@@ -112,19 +112,19 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 
 | # | Шаг | Файлы (план) | Зависит от |
 |---|-----|--------------|------------|
-| 1 | `KrepostHttpTarget` + единый CLI | `ataker/target_http.py`, wrap `ataker_hit_http.py` | — |
-| 2 | `FeedbackEntry` + black-box filter | `ataker/feedback.py` | 1 |
-| 3 | `PlannedAttack` / `PlannerOutput` dataclasses | `ataker/planner_types.py` | спека §2 |
-| 4 | Stub Planner (без LLM): round-robin категорий + фикс mutations | `ataker/planner.py` | 2, 3 |
-| 5 | `adversarial_loop` coordinator | `ataker/adversarial_loop.py` | 4 + RedTeamLoop/HTTP |
-| 6 | LLM Planner (Llama abliterated) + system prompt | `ataker/planner.py` | LM Studio на Air |
-| 7 | Multi-turn SessionStrategy (FITD/Crescendo skeleton) | `ataker/strategies/multi_turn.py` | 5 |
-| 8 | YAML/JSON strategy pack (Promptfoo-style) | `ataker/strategies/*.yaml` | 5 |
-| 9 | RAG knowledge hooks | `ataker/knowledge/` | спека §3 |
-| 10 | L2–L5 capabilities gate (auth уже есть) | wire `AuthManager` → Planner | auth ✅ |
+| 1 | `KrepostHttpTarget` + единый CLI | `ataker/target_http.py`, `ataker/harness.py` | — | ✅ 2026-07-24 |
+| 2 | `FeedbackEntry` + black-box filter | `ataker/feedback.py` | 1 | ✅ |
+| 3 | `PlannedAttack` / `PlannerOutput` dataclasses | `ataker/planner_types.py` | спека §2 | ✅ |
+| 4 | Stub Planner (без LLM): round-robin категорий + фикс mutations | `ataker/planner.py` | 2, 3 | ✅ |
+| 5 | `adversarial_loop` coordinator | `ataker/adversarial_loop.py` + `recipe_executor.py` | 4 + HTTP | ✅ |
+| 6 | LLM Planner (Llama abliterated) + system prompt | `ataker/planner.py` | LM Studio на Air | ⏳ |
+| 7 | Multi-turn SessionStrategy (FITD/Crescendo skeleton) | `ataker/strategies/multi_turn.py` | 5 | ⏳ |
+| 8 | YAML/JSON strategy pack (Promptfoo-style) | `ataker/strategies/*.yaml` | 5 | ⏳ |
+| 9 | RAG knowledge hooks | `ataker/knowledge/` | спека §3 | ⏳ |
+| 10 | L2–L5 capabilities gate (auth уже есть) | wire `AuthManager` → Planner | auth ✅ | ⏳ |
 
-**Сейчас в коде есть:** HTTP hit, UCS, vault, mutations, generator, red_team_loop, auth 5 levels.  
-**Нет:** orchestrator-harness (шаги 1–7).
+**Сейчас в коде есть:** HTTP hit, UCS, vault, mutations, generator, red_team_loop, auth 5 levels, **stub harness 1–5**.  
+**Дальше:** LLM Planner (6), multi-turn (7).
 
 ---
 
@@ -141,6 +141,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 ### Агент / ZCode добавляет ↓
 
 - [x] 2026-07-24 | agent | карта PyRIT/garak/Promptfoo/Inspect + очередь H1–H7 | этот файл
+- [x] 2026-07-24 | agent | код шагов 1–5: target/feedback/types/stub planner/loop/CLI + tests | ataker/*.py
 - [ ] 
 
 ---
@@ -150,10 +151,14 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 ```bash
 # песочница Air
 ./scripts/serve_sandbox_air.sh          # :8010
-# потом (будущий CLI):
-# python -m ataker.harness --target http://127.0.0.1:8010 --batch 20 --max-iter 10
 
-# сейчас уже можно бить HTTP:
+# stub harness (без LLM planner):
+cd Ataker-boop
+PYTHONPATH=. python -m ataker.harness --url http://127.0.0.1:8010 --batch 5 --max-iter 3
+# без сети (проверка петли):
+PYTHONPATH=. python -m ataker.harness --dry-run --batch 3 --max-iter 2
+
+# seed HTTP как раньше:
 ./scripts/ataker_sandbox_air.sh
 ```
 
@@ -166,6 +171,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 | Дата | Что |
 |------|-----|
 | 2026-07-24 | Старт: аналоги harness, оптимизационные цели H1–H7, очередь, слот для оператора |
+| 2026-07-24 | Код: `KrepostHttpTarget`, `FeedbackEntry`, stub `Planner`, `AdversarialLoop`, `python -m ataker.harness` |
 
 ---
 

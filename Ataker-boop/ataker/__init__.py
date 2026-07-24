@@ -24,15 +24,29 @@ from .evals_ucs import (
     score_http_mark,
 )
 
+# Harness (Planner-Executor HTTP loop)
+from .target_http import HitResult, KrepostHttpTarget
+from .feedback import FeedbackEntry, OperatorTrace, hit_to_feedback, hit_to_trace
+from .planner_types import PlannedAttack, PlannerInput, PlannerOutput
+from .planner import StubPlanner
+from .recipe_executor import build_batch, build_payload_from_recipe
+from .adversarial_loop import AdversarialLoop, AdversarialReport
 
-# Auth subsystem (5-level access control)
-from .auth import (
-    CapabilityLevel,
-    PlannerCapabilities,
-    AuthManager,
-    init_secrets_dir,
-    generate_ingest_token,
-)
+# Auth subsystem (5-level) — optional deps: pyotp, argon2-cffi ([planner] extra)
+try:
+    from .auth import (
+        CapabilityLevel,
+        PlannerCapabilities,
+        AuthManager,
+        init_secrets_dir,
+        generate_ingest_token,
+    )
+except ImportError:  # pragma: no cover
+    CapabilityLevel = None  # type: ignore
+    PlannerCapabilities = None  # type: ignore
+    AuthManager = None  # type: ignore
+    init_secrets_dir = None  # type: ignore
+    generate_ingest_token = None  # type: ignore
 
 # Sealed envelopes (Round Table / SealedRedLoop — payload stays on Air)
 from .sealed import SealedEnvelope, SealedStore, attack_id_for
