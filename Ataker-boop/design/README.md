@@ -10,6 +10,12 @@
 
 ## 📂 Содержание
 
+### [`2026-07-24-ataker-harness-optimization.md`](./2026-07-24-ataker-harness-optimization.md)
+
+**Живой план: аналоги AI harness (PyRIT / garak / Promptfoo / Inspect) → что оптимизируем в Ataker.**
+
+Карта «такого типа» обвязок, цели H1–H7 (black-box feedback, recipes, cost, multi-turn, scorers, target), очередь внедрения и **слот «Твой вход»** — оператор дописывает идеи в путь, агент не затирает.
+
 ### [`2026-07-22-planner-executor-attacker-design.md`](./2026-07-22-planner-executor-attacker-design.md)
 
 **Архитектура «Planner-Executor» (Творец / Исполнитель) для Ataker-boop v2.**
@@ -110,4 +116,4 @@ test → merge
 
 ---
 
-> Последнее обновление: 2026-07-22
+> Последнее обновление: 2026-07-24 (harness optimization plan)
