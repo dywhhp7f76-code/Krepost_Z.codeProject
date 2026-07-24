@@ -3,32 +3,43 @@
 Зеркало атакующих баз Атакера — **со стороны защиты**.  
 Атака: `Ataker-boop/knowledge/`. Защита: здесь.
 
-Оператор (2026-07-24): «нашел такие же пиздатые базы для крепости» — **допиши URL ниже**.
+## Читать и фильтровать сначала
 
-## Канон (стартовый, симметрия с Атакером)
+👉 **[`SOURCES.md`](./SOURCES.md)** — живые ссылки:
 
-| База | Зачем Крепости | URL / заметка |
-|------|----------------|---------------|
-| **OWASP LLM/GenAI Top 10** | чеклист митигаций по каждому LLM0x | https://genai.owasp.org/llm-top-10/ |
-| **PortSwigger Academy** | как чинить Injection / Access / Logic на API и output path | https://portswigger.net/web-security |
-| **MITRE ATT&CK** (defense) | detections / mitigations по тактикам | https://attack.mitre.org/ |
-| **Exploit-DB** (defense read) | сигнатуры / паттерны для L1 и тестов регресса | https://www.exploit-db.com/ |
+| База | Зачем Крепости |
+|------|----------------|
+| **NIST CSF 2.0** | глубина защиты, Govern→Recover, мониторинг |
+| **CNCF Security** | изоляция контейнеров/процессов, lifecycle |
+| **Google SRE Book** | Monitoring, Alerting, Cascading Failures |
+| **Azure AI / LLM security** | практики защиты ИИ-сервисов и API |
 
-## Куда класть митигации в коде/доках
+Оператор отмечает ✅/⏸/❌ → потом карточки в `sources/`.
 
-| Риск | Куда в Крепости |
-|------|-----------------|
-| Prompt Injection | `krepost/security/pipeline.py` L1–L2, guard prompts |
-| Output handling | L4 / ToolOutputGuard |
-| Data poisoning | ingest guards, quarantine, RELAI |
-| Excessive agency | harness tools + UrlGuard |
-| Embedding weaknesses | MemoryRouter / cosine thresholds |
+## Симметрия с Атакером (уже в Red Team KB)
 
-## Оператор добавляет defense-базы ↓
+| Атакер | Defense (сюда) |
+|--------|----------------|
+| OWASP LLM Top 10 | митигации по LLM0x |
+| PortSwigger | hardening Injection/Access/Logic на API |
+| MITRE ATT&CK / ATLAS | detections / mitigations |
+| Exploit-DB | паттерны для L1 / регресса |
 
-- [ ] YYYY-MM-DD | название | URL | зачем слою _
+Атакующие ссылки: `Ataker-boop/knowledge/SOURCES.md`.
 
-## Связь
+## Куда ляжет в код после фильтра
 
-- Ataker sources: `Ataker-boop/knowledge/SOURCES.md`
-- Harness plan §4: `Ataker-boop/design/2026-07-24-ataker-harness-optimization.md`
+| Риск / тема | Куда в Крепости |
+|-------------|-----------------|
+| Prompt Injection | `krepost/security/pipeline.py` L1–L2 |
+| Output / agency | L4, harness tools, UrlGuard |
+| Monitoring / alerts | metrics, Netdata proposal, Telegram later |
+| Cascading failures | rate limit, fail-closed, launchd health |
+| Isolation | Air↔Studio, sandbox `:8010`, Tailscale |
+
+## Оператор добавляет ещё ↓
+
+- [ ] YYYY-MM-DD | название | URL | зачем _
+
+План harness §4 тоже принимает defense-строки:  
+`Ataker-boop/design/2026-07-24-ataker-harness-optimization.md`
