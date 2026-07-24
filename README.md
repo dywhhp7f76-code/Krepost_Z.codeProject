@@ -2,7 +2,7 @@
 
 **Krepost** (Крепость) — 4-слойная система безопасности для локальных AI/LLM-систем.
 
-Версия pipeline: **v2.2** | Версия cache: **v2.1** | Тесты: **`pytest tests/ Probnoki/` (~775+)**  
+Версия pipeline: **v2.2** | Версия cache: **v2.1** | Тесты: **`pytest tests/ Probnoki/` (787)**  
 Бой: Mac Studio `serve_lmstudio` `:8000` (LM Studio main+guard). См. `ROADMAP.md`.
 
 > 📌 Изначальный замысел проекта (зачем всё это и какой баланс между
@@ -106,13 +106,38 @@ security → router → LLM → security и возвращает вердикт 
 ⚠️ Демо-сборка (`krepost.api.server`) использует dev-guard, пропускающий
 всё — для прода нужен реальный Qwen3Guard и локальная LLM вместо EchoBackend.
 
-### Боевой стек на Ollama (день-1 на Mac Studio)
+### Боевой стек: LM Studio (Mac Studio)
+
+Бой: `serve_lmstudio.py` / LaunchAgent — main **Qwen3.6-35B-A3B**, guard
+**Qwen3Guard-Gen-4B**. В LM Studio подними локальный сервер (`:1234`), затем:
+
+```bash
+pip install -e ".[api]"
+python serve_lmstudio.py              # http://127.0.0.1:8000
+```
+
+```python
+from krepost.orchestration.factory import build_openai_orchestrator
+from krepost.api.app import create_app
+
+orch = build_openai_orchestrator(
+    main_model="qwen/qwen3.6-35b-a3b",        # LM Studio id основной модели
+    base_url="http://127.0.0.1:1234/v1",
+    guard_model="qwen3guard-gen-4b",
+)
+app = create_app(orch)
+```
+
+`build_openai_agent(tools=[...])` — агентный режим. HTTP через stdlib;
+`OpenAIGuardClient` адаптирует ответ под `GuardClassifier`.
+
+### Альтернатива: Ollama
 
 ```bash
 pip install -e ".[api,ollama]"
 
-ollama serve &                        # локальный inference-сервер
-ollama pull qwen3.6:27b               # main-модель
+ollama serve &
+ollama pull qwen3.6:35b-a3b           # main — Qwen3.6-35B-A3B (не 27b dense)
 ollama pull qwen3guard-gen:4b         # guard (Layer 2)
 ```
 
@@ -120,36 +145,15 @@ ollama pull qwen3guard-gen:4b         # guard (Layer 2)
 from krepost.orchestration.factory import build_ollama_orchestrator
 from krepost.api.app import create_app
 
-# один ollama-клиент обслуживает и guard, и main-модель
-orch = build_ollama_orchestrator(main_model="qwen3.6:27b")
-app = create_app(orch)                # uvicorn krepost...:app
-```
-
-Для агентного режима с инструментами — `build_ollama_agent(tools=[...])`
-(`ToolAgent`): каждый tool-результат проходит `ToolOutputGuard`, fetch —
-`UrlGuard`. Layer 3 (few-shot) подключается передачей `embedder` (BGE-M3)
-и `chroma_collection` в фабрику.
-
-### Или OpenAI-совместимый сервер (LM Studio / vLLM / LocalAI)
-
-Если модель крутится в LM Studio (или любом OpenAI-совместимом движке) —
-включи в нём локальный сервер и укажи Крепости его адрес. Тот же transport
-обслуживает и guard, и main-модель.
-
-```python
-from krepost.orchestration.factory import build_openai_orchestrator
-from krepost.api.app import create_app
-
-orch = build_openai_orchestrator(
-    main_model="local-model",                 # имя загруженной в LM Studio модели
-    base_url="http://127.0.0.1:1234/v1",      # LM Studio по умолчанию
-)
+orch = build_ollama_orchestrator(main_model="qwen3.6:35b-a3b")
 app = create_app(orch)
 ```
 
-`build_openai_agent(tools=[...])` — агентный режим. HTTP через stdlib (без
-доп. зависимостей); `OpenAIGuardClient` адаптирует OpenAI-ответ под
-`GuardClassifier`. Никакой привязки к движку — «архитектура важнее модели».
+Для агентного режима — `build_ollama_agent(tools=[...])` (`ToolAgent`):
+tool-результаты → `ToolOutputGuard`, fetch → `UrlGuard`. Layer 3 (few-shot):
+передай `embedder` (BGE-M3) и `chroma_collection` в фабрику.
+
+Никакой привязки к движку — «архитектура важнее модели».
 
 ---
 
@@ -158,48 +162,37 @@ app = create_app(orch)
 ```
 Krepost-V3/
 ├── krepost/
-│   └── security/
-│       ├── pipeline.py          # Security Pipeline v2.2
-│       ├── normalize.py         # Unicode normalization
-│       └── trust_registry.py    # Trust Registry (SQLite)
-├── src/krepost/
-│   └── cache/
-│       └── SMART_CACHE.py       # Smart Cache v2.1
-├── tests/
-│   ├── test_pipeline.py         # 66 тестов pipeline
-│   ├── test_normalize.py        # 27 тестов нормализации
-│   └── test_trust_registry.py   # 11 тестов trust registry
-├── Krepost/                     # Obsidian knowledge base
-│   ├── 01-ARCHITECTURE/
-│   ├── 02-COMPONENTS/
-│   ├── 03-ROADMAP/
-│   └── ...
+│   ├── security/                # Pipeline v2.2, normalize, trust registry
+│   ├── cache/
+│   │   └── SMART_CACHE.py       # Smart Cache v2.1
+│   ├── orchestration/           # factory, backends, agent
+│   └── api/                     # FastAPI обвязка
+├── tests/                       # unit/integration
+├── Probnoki/                    # пробники / end-to-end checks
 ├── docs/                        # Документация
-├── pyproject.toml
+├── Ataker-boop/                 # атакующий (грязная зона)
+├── pyproject.toml               # packages: krepost* (один корень)
 └── README.md
 ```
+
+Один namespace `krepost` из корня репо (`pip install -e .`). Дубликата
+`src/krepost/` больше нет.
 
 ---
 
 ## Статус / Roadmap
 
-### Фаза 0 — Текущая (без Mac)
-- Выбор модели, security.py v1.1, промпты, Smart Cache v2.1, датасет
-
-### Фаза 1 — Приход Mac (сборка)
-- Соединение модулей, реальный Guard, инфраструктура, KVEraser, мониторинг
-
-### Фаза 2 — После сборки
-- Атакующий + adversarial training, Red Team Loop, self-improvement
+См. актуальный [`ROADMAP.md`](./ROADMAP.md). Кратко: Studio на LM Studio
+(35B-A3B + guard), Air — Ataker / dirty zone.
 
 ---
 
 ## Тесты
 
-104 теста, 3 файла:
+**787** тестов (`tests/` + `Probnoki/`, `pytest --collect-only`):
 
 ```bash
-pytest tests/ -v
+pytest tests/ Probnoki/ -v
 ```
 
-Покрытие: SecurityContext, SecurityReceipt, RegexFilter (base64, homoglyphs, XML, CDATA, zero-width), GuardClassifier (parse, fail-closed), CircuitBreaker, RateLimiter, PIIMasker (email, карты Luhn, JWT, ключи, IP), OutputFilter, SecurityPipeline (integration), Unicode Normalization, Trust Registry.
+Покрытие: SecurityContext, SecurityReceipt, RegexFilter (base64, homoglyphs, XML, CDATA, zero-width), GuardClassifier (parse, fail-closed), CircuitBreaker, RateLimiter, PIIMasker (email, карты Luhn, JWT, ключи, IP), OutputFilter, SecurityPipeline (integration), Unicode Normalization, Trust Registry, Smart Cache, orchestration/API, пробники.

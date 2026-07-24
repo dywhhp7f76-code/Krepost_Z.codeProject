@@ -76,7 +76,7 @@ next_review: 2026-08-01
 
 ### 1.4 Инфраструктура
 config.py, models.py, __init__.py, .env.example, requirements.txt, backup.sh.
-backup.sh: рабочее (SN580) и бэкап (HDD) — РАЗНЫЕ диски.
+backup.sh: рабочее (SN850X) и бэкап (HDD) — РАЗНЫЕ диски.
 
 ### 1.5 Периферия и диски
 - UGREEN Revodok Max TB5 — док подключён, 6× TB4 40Gbps
