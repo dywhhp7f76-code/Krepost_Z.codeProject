@@ -177,7 +177,12 @@ if ENABLE_AGENT:
     title_bits.append("+ agent harness")
 title = " ".join(title_bits) + ")"
 
-app = create_app(orchestrator, agent=agent, title=title)
+app = create_app(
+    orchestrator,
+    agent=agent,
+    title=title,
+    vault_root=VAULT,
+)
 
 
 if __name__ == "__main__":
