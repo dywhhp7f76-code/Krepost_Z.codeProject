@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Obsidian Agents</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1410;
+      --panel: #182018;
+      --ink: #e7efe6;
+      --muted: #8fa08c;
+      --accent: #7cb87c;
+      --accent2: #c9a66b;
+      --line: rgba(124,184,124,.2);
+      --font: "DM Sans", system-ui, sans-serif;
+      --display: "Fraunces", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: var(--font); color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 0% 0%, rgba(124,184,124,.14), transparent 55%),
+        radial-gradient(700px 400px at 100% 10%, rgba(201,166,107,.1), transparent 50%),
+        linear-gradient(160deg, #0c100c, var(--bg));
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 1.25rem; }
+    h1 {
+      font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.5rem);
+      margin: 0 0 .35rem; letter-spacing: .01em;
+    }
+    h1 span { color: var(--accent); }
+    .sub { color: var(--muted); margin: 0 0 1.1rem; line-height: 1.4; }
+    .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab {
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      border-radius: 999px; padding: .45rem .9rem; font: inherit; cursor: pointer;
+    }
+    .tab.on { background: var(--accent); color: #0f1410; font-weight: 700; border-color: var(--accent); }
+    .card {
+      background: rgba(24,32,24,.85); border: 1px solid var(--line);
+      border-radius: 16px; padding: 1rem 1.1rem; margin-bottom: 1rem;
+      animation: up .25s ease-out;
+    }
+    label { display: block; font-size: .85rem; color: var(--muted); margin: .55rem 0 .3rem; }
+    input, textarea {
+      width: 100%; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.04); color: var(--ink); font: inherit;
+      padding: .75rem .85rem; outline: none;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 5.5rem; resize: vertical; }
+    .row { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; margin-top: .85rem; }
+    button.go {
+      border: 0; border-radius: 12px; background: var(--accent2); color: #1a1408;
+      font: inherit; font-weight: 700; padding: .75rem 1.1rem; cursor: pointer;
+    }
+    button.go:disabled { opacity: .45; cursor: wait; }
+    button.ghost {
+      border: 1px solid var(--line); border-radius: 10px; background: transparent;
+      color: var(--muted); font: inherit; padding: .45rem .7rem; cursor: pointer;
+    }
+    .check { display: flex; gap: .45rem; align-items: center; color: var(--muted); font-size: .9rem; }
+    .out {
+      margin-top: .85rem; padding: .75rem; border-radius: 12px;
+      background: rgba(0,0,0,.25); border: 1px dashed var(--line);
+      white-space: pre-wrap; font-size: .9rem; display: none;
+    }
+    .out.show { display: block; }
+    .out.ok { border-color: rgba(124,184,124,.45); }
+    .out.err { border-color: #c45a5a; color: #f0b0b0; }
+    .inbox { font-size: .88rem; }
+    .inbox a { color: var(--accent); }
+    .inbox li { margin: .35rem 0; color: var(--muted); }
+    .path { color: var(--accent2); word-break: break-all; }
+    .chat {
+      display: flex; flex-direction: column; gap: .55rem;
+      min-height: 280px; max-height: 52dvh; overflow-y: auto;
+      padding: .35rem 0 .5rem;
+    }
+    .bubble {
+      max-width: 92%; padding: .7rem .85rem; border-radius: 14px;
+      white-space: pre-wrap; line-height: 1.4; font-size: .95rem;
+    }
+    .bubble.user {
+      align-self: flex-end; background: rgba(201,166,107,.2);
+      border: 1px solid rgba(201,166,107,.35);
+    }
+    .bubble.bot {
+      align-self: flex-start; background: rgba(124,184,124,.12);
+      border: 1px solid var(--line);
+    }
+    .agent-item {
+      display: flex; justify-content: space-between; gap: .75rem;
+      align-items: flex-start; padding: .65rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .agent-item:last-child { border-bottom: 0; }
+    .agent-meta { color: var(--muted); font-size: .85rem; margin-top: .2rem; }
+    @keyframes up { from { opacity: 0; transform: translateY(6px);} to { opacity:1; transform:none;} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Obsidian <span>Agents</span></h1>
+    <p class="sub">
+      Создавай агентов чатом. Пишут только в Inbox.
+      <br /><span class="path" id="inboxPath">…</span>
+    </p>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="create">Создать агента</button>
+      <button class="tab" data-tab="mine">Мои агенты</button>
+      <button class="tab" data-tab="clip">С сайта (URL)</button>
+      <button class="tab" data-tab="topic">По теме</button>
+      <button class="tab" data-tab="list">Inbox</button>
+    </div>
+
+    <section class="card" id="panel-create">
+      <p class="sub" style="margin:0 0 .5rem">
+        Без ИИ на Air — по шаблонам. Если Studio онлайн — разбор чуть умнее.
+      </p>
+      <div class="chat" id="chat"></div>
+      <label class="check" style="margin-top:.4rem">
+        <input type="checkbox" id="preferStudio" checked /> Спросить Studio (если доступна)
+      </label>
+      <div class="row">
+        <textarea id="chatIn" placeholder="Например: агент для ссылок про крипту / чеклист утренний / заметки по Крепости" style="min-height:3.2rem;flex:1"></textarea>
+      </div>
+      <div class="row">
+        <button class="go" id="btnChat">Отправить</button>
+        <button class="ghost" id="btnHelp" type="button">Помощь</button>
+      </div>
+    </section>
+
+    <section class="card" id="panel-mine" hidden>
+      <div class="row" style="margin-top:0">
+        <button class="go" id="btnRefreshAgents" style="background:var(--accent)">Обновить</button>
+      </div>
+      <div id="agentsList"></div>
+      <div class="out" id="outRun"></div>
+    </section>
+
+    <section class="card" id="panel-clip" hidden>
+      <label>Ссылка</label>
+      <input id="url" placeholder="https://…" />
+      <label>Твой комментарий (необязательно)</label>
+      <textarea id="clipNote" placeholder="Зачем сохраняю / на что обратить внимание"></textarea>
+      <div class="row">
+        <button class="go" id="btnClip">Сохранить в Inbox</button>
+      </div>
+      <div class="out" id="outClip"></div>
+    </section>
+
+    <section class="card" id="panel-topic" hidden>
+      <label>Тема / вопрос</label>
+      <input id="topic" placeholder="Например: как устроен MemoryRouter в Крепости" />
+      <label>Доп. мысли / тезисы</label>
+      <textarea id="extra" placeholder="Что уже знаешь, ссылки, намётки…"></textarea>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="useLlm" checked /> Писать через LM Studio (если запущен)</label>
+        <button class="go" id="btnTopic">Создать заметку</button>
+      </div>
+      <div class="out" id="outTopic"></div>
+    </section>
+
+    <section class="card inbox" id="panel-list" hidden>
+      <div class="row">
+        <button class="go" id="btnRefresh" style="background:var(--accent)">Обновить список</button>
+        <button class="go" id="btnOpenFolder" type="button">Открыть папку Inbox</button>
+      </div>
+      <ul id="list"></ul>
+    </section>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const panels = {
+      create: $("panel-create"),
+      mine: $("panel-mine"),
+      clip: $("panel-clip"),
+      topic: $("panel-topic"),
+      list: $("panel-list"),
+    };
+    document.querySelectorAll(".tab").forEach((btn) => {
+      btn.onclick = () => {
+        document.querySelectorAll(".tab").forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        Object.keys(panels).forEach((k) => (panels[k].hidden = k !== btn.dataset.tab));
+        if (btn.dataset.tab === "list") loadInbox();
+        if (btn.dataset.tab === "mine") loadAgents();
+      };
+    });
+
+    fetch("/api/config").then((r) => r.json()).then((c) => {
+      $("inboxPath").textContent = c.inbox;
+    });
+
+    function show(el, ok, text) {
+      el.className = "out show " + (ok ? "ok" : "err");
+      el.textContent = text;
+    }
+
+    function addBubble(role, text) {
+      const d = document.createElement("div");
+      d.className = "bubble " + (role === "user" ? "user" : "bot");
+      d.textContent = text;
+      $("chat").appendChild(d);
+      $("chat").scrollTop = $("chat").scrollHeight;
+    }
+
+    async function sendChat(msg) {
+      if (!msg.trim()) return;
+      addBubble("user", msg);
+      $("chatIn").value = "";
+      $("btnChat").disabled = true;
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: msg,
+            prefer_studio: $("preferStudio").checked,
+          }),
+        });
+        const j = await r.json();
+        addBubble("bot", j.text || j.error || "…");
+        if (j.agent) loadAgents();
+      } catch (e) {
+        addBubble("bot", String(e));
+      } finally {
+        $("btnChat").disabled = false;
+      }
+    }
+
+    $("btnChat").onclick = () => sendChat($("chatIn").value);
+    $("btnHelp").onclick = () => sendChat("помощь");
+    $("chatIn").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendChat($("chatIn").value);
+      }
+    });
+    addBubble("bot", "Опиши агента обычным текстом — создам без ИИ на Air.\nКоманды: /list · /run id текст · /del id");
+
+    async function loadAgents() {
+      const r = await fetch("/api/agents");
+      const j = await r.json();
+      const box = $("agentsList");
+      box.innerHTML = "";
+      if (!j.agents.length) {
+        box.innerHTML = "<p class='sub'>Пока нет — создай во вкладке «Создать агента».</p>";
+        return;
+      }
+      j.agents.forEach((a) => {
+        const row = document.createElement("div");
+        row.className = "agent-item";
+        row.innerHTML =
+          "<div><strong>" +
+          (a.name || a.id) +
+          "</strong><div class='agent-meta'>" +
+          a.id +
+          " · " +
+          a.type +
+          " · " +
+          (a.built_by || "?") +
+          "</div></div>";
+        const actions = document.createElement("div");
+        actions.className = "row";
+        actions.style.marginTop = "0";
+        const run = document.createElement("button");
+        run.className = "go";
+        run.textContent = "Запуск";
+        run.onclick = async () => {
+          let text = "";
+          let url = "";
+          if (a.type === "clip") {
+            url = prompt("URL для клиппера:") || "";
+            if (!url) return;
+          } else {
+            text = prompt("Текст / тема для агента:", a.name || "") || "";
+          }
+          run.disabled = true;
+          try {
+            const resp = await fetch("/api/agents/" + encodeURIComponent(a.id) + "/run", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text, url }),
+            });
+            const jr = await resp.json();
+            if (!jr.ok) show($("outRun"), false, jr.error || "ошибка");
+            else show($("outRun"), true, (jr.title || "") + "\n" + (jr.path || "") + "\n\n" + (jr.preview || ""));
+          } catch (e) {
+            show($("outRun"), false, String(e));
+          } finally {
+            run.disabled = false;
+          }
+        };
+        const del = document.createElement("button");
+        del.className = "ghost";
+        del.textContent = "Удалить";
+        del.onclick = async () => {
+          if (!confirm("Удалить " + a.id + "?")) return;
+          await fetch("/api/agents/" + encodeURIComponent(a.id), { method: "DELETE" });
+          loadAgents();
+        };
+        actions.appendChild(run);
+        actions.appendChild(del);
+        row.appendChild(actions);
+        box.appendChild(row);
+      });
+    }
+    $("btnRefreshAgents").onclick = loadAgents;
+
+    $("btnClip").onclick = async () => {
+      const url = $("url").value.trim();
+      if (!url) return;
+      $("btnClip").disabled = true;
+      try {
+        const r = await fetch("/api/clip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, note: $("clipNote").value }),
+        });
+        const j = await r.json();
+        if (!j.ok) show($("outClip"), false, j.error || "ошибка");
+        else show($("outClip"), true, "Готово\n" + j.title + "\n" + j.path + "\n\n" + (j.preview || ""));
+      } catch (e) {
+        show($("outClip"), false, String(e));
+      } finally {
+        $("btnClip").disabled = false;
+      }
+    };
+
+    $("btnTopic").onclick = async () => {
+      const topic = $("topic").value.trim();
+      if (!topic) return;
+      $("btnTopic").disabled = true;
+      try {
+        const r = await fetch("/api/topic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic,
+            extra: $("extra").value,
+            use_llm: $("useLlm").checked,
+          }),
+        });
+        const j = await r.json();
+        if (!j.ok) show($("outTopic"), false, j.error || "ошибка");
+        else
+          show(
+            $("outTopic"),
+            true,
+            "Готово" + (j.used_llm ? " (LLM)" : " (шаблон)") + "\n" + j.title + "\n" + j.path + "\n\n" + (j.preview || "")
+          );
+      } catch (e) {
+        show($("outTopic"), false, String(e));
+      } finally {
+        $("btnTopic").disabled = false;
+      }
+    };
+
+    async function loadInbox() {
+      const r = await fetch("/api/inbox");
+      const j = await r.json();
+      const ul = $("list");
+      ul.innerHTML = "";
+      if (!j.items.length) {
+        ul.innerHTML = "<li>Пусто — ещё ничего не кидали</li>";
+        return;
+      }
+      j.items.forEach((it) => {
+        const li = document.createElement("li");
+        li.textContent = it.name;
+        ul.appendChild(li);
+      });
+    }
+
+    $("btnRefresh").onclick = loadInbox;
+    $("btnOpenFolder").onclick = async () => {
+      await fetch("/api/open-inbox", { method: "POST" });
+    };
+  </script>
+</body>
+</html>

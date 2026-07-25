@@ -1,0 +1,4 @@
+[2026-07-16T22:50:37.900608] FAIL http://help status=None title=None keywords=[] error=HTTPConnectionPool(host='help', port=80): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPConnection(host='help', port=80): Failed to resolve 'help' ([Errno 8] nodename nor servname provided, or not known)"))
+[2026-07-18T09:22:33.120835] OK https://example.com status=200 title='Example Domain' keywords=[] error=None
+[2026-07-20T21:23:38.009898] FAIL https://example.com status=None title=None keywords=[] error=HTTPSConnectionPool(host='example.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='example.com', port=443): Failed to resolve 'example.com' ([Errno 8] nodename nor servname provided, or not known)"))
+[2026-07-21T00:31:43.744788] OK https://example.com status=200 title='Example Domain' keywords=[] error=None

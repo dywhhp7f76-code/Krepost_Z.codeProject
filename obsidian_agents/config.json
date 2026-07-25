@@ -1,0 +1,8 @@
+{
+  "vault_inbox": "/Users/hervam/ZCodeProject/Krepost_Z.codeProject/vault/09-Inbox/from_agents",
+  "lmstudio_url": "http://127.0.0.1:1234/v1",
+  "lmstudio_model": "",
+  "krepost_url": "http://10.0.0.1:8000",
+  "host": "127.0.0.1",
+  "port": 8765
+}
