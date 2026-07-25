@@ -1,0 +1,3 @@
+# Один URL на строку. # — комментарий.
+https://example.com
+# http://someonionaddress.onion
