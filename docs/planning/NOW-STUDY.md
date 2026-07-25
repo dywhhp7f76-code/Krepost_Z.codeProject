@@ -1,12 +1,12 @@
-# NOW — что учить сейчас (до десерта)
+# NOW — что учить сейчас (фаза I, 45 дней)
 
-> До **2026-08-28** цель = **понять**, не «внедрить всё».  
-> Код десерта (LLM Planner, multi-turn, Chroma…) — после фазы B.  
-> Парковка «потом»: `docs/deferred/`.
+> **Старт:** 2026-07-25 · **Потолок фазы I:** **2026-09-08** (+45 дней).  
+> Цель = **понять**, не «внедрить всё». Раньше закрыл — раньше десерт.  
+> Код десерта — фаза II (8 Sep → 23 Oct). Парковка: `docs/deferred/`.
 
 ## Порядок (не прыгай)
 
-### 1. Атака (до 31 Jul / 7 Aug)
+### 1. Атака (ориентир до 1 / 8 Aug)
 
 | # | Материал | Где | Зачем сейчас |
 |---|----------|-----|--------------|
@@ -15,9 +15,9 @@
 | 3 | MITRE ATLAS | §3 | AI TTPs |
 | 4 | PortSwigger Logic + Access | §2 | мышление цепочкой (не все labs) |
 
-Карточки уже есть: `knowledge/sources/01…03-*.md` — читай + правь, не плоди дубли.
+Карточки: `knowledge/sources/01…03-*.md`.
 
-### 2. Защита (до 14 Aug)
+### 2. Защита (ориентир до 15 Aug)
 
 | # | Материал | Где | Зачем сейчас |
 |---|----------|-----|--------------|
@@ -25,9 +25,9 @@
 | 2 | SRE Monitoring + Cascading Failures | там же | асимметрия / не упасть под redteam |
 | 3 | Azure AI security best practices (обзор) | там же | идеи L1–L4 / agency |
 
-**Отложено в deferred:** полный CNCF/K8s deep-dive, полный Azure network hardening.
+**Отложено:** CNCF/K8s deep, полный Azure network — `docs/deferred/defense/`.
 
-### 3. Память и tools — для обоих (до 21 Aug)
+### 3. Память и tools — для обоих (ориентир до 22 Aug)
 
 | # | Материал | Где |
 |---|----------|-----|
@@ -36,29 +36,28 @@
 | 3 | LlamaIndex Memory + blocks + tools | `llamaindex_memory_tools.md` |
 | 4 | Таблица attack vs defense | `frameworks/FOR_BOTH.md` |
 
-### 4. То, что уже в коде (до 28 Aug)
+### 4. То, что уже в коде (ориентир до 29 Aug)
 
 ```bash
 ./scripts/serve_sandbox_air.sh
 DRY=1 ./scripts/ataker_harness.sh
-# или: PYTHONPATH=Ataker-boop python3 -m ataker.harness --dry-run
 ```
 
-Понять руками: `FeedbackEntry` (без layer), `PlannedAttack`, `StubPlanner`, `adversarial_loop`, `knowledge_loader`.
+Понять: `FeedbackEntry`, `PlannedAttack`, `StubPlanner`, `adversarial_loop`, `knowledge_loader`.  
+Слои: `Ataker-boop/knowledge/layers/`, `defense_krepost.md`.
 
-Слои жертвы: `Ataker-boop/knowledge/layers/`, `defense_krepost.md`.
+### 5. Фильтр (к **8 Sep**)
+
+Все три `SOURCES.md` → ✅/⏸/❌; тонкие карточки только по ✅.
 
 ---
 
-## Чеклист оператора (фаза A)
+## Чеклист фазы I
 
 - [ ] A1 OWASP + PS LLM + ATLAS
 - [ ] A2 Logic + Access
 - [ ] A3 NIST + SRE Monitoring/Cascading
 - [ ] A4 LC/LI memory-tools
-- [ ] A5 stub harness dry-run понятен
-- [ ] Ни один пункт десерта C/D не начат «потому что интересно»
-
-## После учёбы → фильтр (фаза B)
-
-Отметь в трёх `SOURCES.md`. Всё ⏸/❌ уезжает осознанно в `docs/deferred/` (уже разложено; фильтр только подтверждает).
+- [ ] A5 stub harness понятен
+- [ ] B фильтр SOURCES к **2026-09-08**
+- [ ] Десерт не начат, пока фаза I не закрыта (кроме досрочки)

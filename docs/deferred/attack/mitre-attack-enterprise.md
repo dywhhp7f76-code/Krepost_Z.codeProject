@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` |
 | NOW? | нет — сейчас **ATLAS** |
-| Unlock | ≥ **2026-09-12** |
+| Unlock | ≥ **2026-09-08** |
 | Ссылки | `Ataker-boop/knowledge/SOURCES.md` §3 |
 
 ## Потом

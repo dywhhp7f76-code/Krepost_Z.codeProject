@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` / **dessert-adjacent** |
 | NOW? | нет |
-| Unlock | после C1 LLM Planner (≥ **2026-09-18**), лучше после первого ASR-цикла |
+| Unlock | после C1 LLM Planner (≥ **2026-09-22**), лучше после первого ASR-цикла |
 | Канон | `vault/.../arxiv/Agentic_Workflow_Optimization.md` |
 
 ## Зачем потом

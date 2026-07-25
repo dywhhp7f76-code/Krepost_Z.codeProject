@@ -4,7 +4,7 @@
 > Живые ссылки; в vault кладём только отобранное.
 >
 > **Календарь:** `docs/planning/CALENDAR.md`  
-> **NOW:** §3 LangChain/LlamaIndex (A4, до 21 Aug)  
+> **NOW:** §3 LangChain/LlamaIndex (A4; фаза I до 8 Sep)  
 > **DEFERRED:** arXiv deep + DL.AI + workflow-opt → `docs/deferred/agents/`
 
 ---
@@ -12,7 +12,7 @@
 ## 1. arXiv — поисковые запросы (для агентов) · **DEFERRED** deep
 
 Парковка: `docs/deferred/agents/arxiv-deep-ingest.md` · workflow: `…/workflow-optimization.md`  
-Сейчас: можно глянуть заголовки; глубокое чтение ≥ **2026-09-12** после фильтра.
+Сейчас: можно глянуть заголовки; глубокое чтение ≥ **2026-09-08** после фильтра.
 
 | Запрос | Search URL |
 |--------|------------|

@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` |
 | NOW? | нет (сначала LC/LI docs выжимки) |
-| Unlock | ≥ **2026-09-12** |
+| Unlock | ≥ **2026-09-08** |
 | Канон | `vault/.../deeplearning_ai/courses.md` |
 
 ## Курсы на потом

@@ -7,8 +7,8 @@
 
 | Метка | Смысл |
 |-------|--------|
-| **NOW** | CSF Protect/Detect/Respond + SRE Monitoring/Cascading (до 14 Aug) |
-| **DEFERRED** | CNCF/K8s deep, полный NIST mapping, Azure deep, SRE Alerting |
+| **NOW** | CSF Protect/Detect/Respond + SRE Monitoring/Cascading (фаза I до **8 Sep**) |
+| **DEFERRED** | CNCF/K8s deep, полный NIST mapping, Azure deep, SRE Alerting (unlock ≥ **8 Sep**) |
 
 ---
 

@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` |
 | NOW? | частично: LLM + Logic + Access = NOW; SQLi/SSTI/XXE labs = later |
-| Unlock | ≥ **2026-09-12** |
+| Unlock | ≥ **2026-09-08** |
 | Ссылки | `Ataker-boop/knowledge/SOURCES.md` §2 |
 
 ## Парковка

@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` |
 | NOW? | нет (Крепость сейчас = Studio/Air/process, не K8s prod) |
-| Unlock | ≥ **2026-09-12** |
+| Unlock | ≥ **2026-09-08** |
 | Ссылки | `docs/security/knowledge-bases/SOURCES.md` §2 |
 
 ## Потом

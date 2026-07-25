@@ -124,7 +124,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 | 10 | L2–L5 capabilities gate (auth уже есть) | wire `AuthManager` → Planner | auth ✅ | ⏳ |
 
 **Сейчас в коде есть:** HTTP hit, UCS, vault, mutations, generator, red_team_loop, auth 5 levels, **stub harness 1–5**.  
-**Дальше (ДЕСЕРТ, не раньше 2026-09-12):** LLM Planner (6), multi-turn (7), YAML (8), Chroma (9), Auth gate (10).
+**Дальше (ДЕСЕРТ, с 2026-09-08 / досрочно после фазы I):** LLM Planner (6), multi-turn (7), YAML (8), Chroma (9), Auth gate (10).
 
 ### Календарь оператора (учёба → десерт)
 
@@ -134,7 +134,7 @@ Attack strategies        →  PlannedAttack recipes       🔨 нет (спек�
 | Что учить NOW | `docs/planning/NOW-STUDY.md` |
 | Парковка + десерт | `docs/deferred/` · `docs/deferred/DESSERT.md` |
 
-Горизонт: **2026-07-24 → 2026-09-25** (волна 1 десерта); хвост D до **2026-10-09**.
+Горизонт: **2026-07-25 +45 = 2026-09-08** (учёба) · **+45 = 2026-10-23** (десерт).
 
 ---
 
@@ -188,7 +188,7 @@ PYTHONPATH=. python -m ataker.harness --dry-run --batch 3 --max-iter 2
 | 2026-07-24 | Старт: аналоги harness, оптимизационные цели H1–H7, очередь, слот для оператора |
 | 2026-07-24 | Код: `KrepostHttpTarget`, `FeedbackEntry`, stub `Planner`, `AdversarialLoop`, `python -m ataker.harness` |
 | 2026-07-24 | KB: OWASP / PortSwigger / MITRE / Exploit-DB карточки + defense slot для Крепости |
-| 2026-07-24 | Planning: NOW-STUDY + CALENDAR (→09-25) + deferred/dessert парковка |
+| 2026-07-25 | Planning: календарь пересчитан — 25 Jul +45/+45 → 8 Sep / 23 Oct |
 
 ---
 

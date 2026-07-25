@@ -4,7 +4,7 @@
 |------|----------|
 | Статус | `deferred` |
 | NOW? | Monitoring + Cascading Failures |
-| Unlock | ≥ **2026-09-12** |
+| Unlock | ≥ **2026-09-08** |
 | Ссылки | sre.google book chapters в SOURCES |
 
 ## Потом
