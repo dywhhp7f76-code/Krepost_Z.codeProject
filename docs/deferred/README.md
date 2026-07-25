@@ -26,9 +26,9 @@ docs/deferred/
 
 | Папка | Что лежит | Unlock (учёба/код) |
 |-------|-----------|-------------------|
-| `attack/` | Exploit-DB deep, PS SQLi/SSTI school, ATT&CK Enterprise шире | учёба с 12 Sep; код по желанию |
-| `defense/` | CNCF/K8s deep, полный NIST mapping, Azure network | с 12 Sep |
-| `agents/` | arXiv deep ingest, workflow-opt papers, DL.AI courses | с 12 Sep |
-| `harness/` | указатели на десерт-шаги 6–10 | код с 12 Sep / 26 Sep |
+| `attack/` | Exploit-DB deep, PS SQLi/SSTI school, ATT&CK Enterprise шире | unlock ≥ **8 Sep** |
+| `defense/` | CNCF/K8s deep, полный NIST mapping, Azure network | ≥ **8 Sep** |
+| `agents/` | arXiv deep ingest, workflow-opt papers, DL.AI courses | ≥ **8 Sep** |
+| `harness/` | указатели на десерт-шаги 6–10 | код с **8 Sep** → потолок **23 Oct** |
 
 Календарь: `docs/planning/CALENDAR.md`.
