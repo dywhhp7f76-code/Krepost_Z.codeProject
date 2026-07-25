@@ -1,0 +1,14 @@
+[
+  {
+    "url": "http://help",
+    "timestamp": "2026-07-16T22:50:37.900608",
+    "success": false,
+    "status": null,
+    "title": null,
+    "preview": null,
+    "matched_keywords": [],
+    "keyword_filter_active": false,
+    "kept": true,
+    "error": "HTTPConnectionPool(host='help', port=80): Max retries exceeded with url: / (Caused by NameResolutionError(\"HTTPConnection(host='help', port=80): Failed to resolve 'help' ([Errno 8] nodename nor servname provided, or not known)\"))"
+  }
+]

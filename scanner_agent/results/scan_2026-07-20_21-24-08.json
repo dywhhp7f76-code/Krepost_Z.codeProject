@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://example.com",
+    "timestamp": "2026-07-20T21:23:38.009898",
+    "success": false,
+    "status": null,
+    "title": null,
+    "preview": null,
+    "matched_keywords": [],
+    "keyword_filter_active": false,
+    "kept": true,
+    "error": "HTTPSConnectionPool(host='example.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError(\"HTTPSConnection(host='example.com', port=443): Failed to resolve 'example.com' ([Errno 8] nodename nor servname provided, or not known)\"))"
+  }
+]

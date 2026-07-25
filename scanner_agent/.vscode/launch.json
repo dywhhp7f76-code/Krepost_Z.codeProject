@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Scanner Agent",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/darknet_agent.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/venv/bin/python",
+      "justMyCode": true
+    },
+    {
+      "name": "Scanner Agent (file urls_example.txt)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/darknet_agent.py",
+      "args": ["file", "urls_example.txt"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/venv/bin/python",
+      "justMyCode": true
+    }
+  ]
+}

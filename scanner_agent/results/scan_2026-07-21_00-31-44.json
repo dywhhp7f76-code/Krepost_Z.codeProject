@@ -1,0 +1,14 @@
+[
+  {
+    "url": "https://example.com",
+    "timestamp": "2026-07-21T00:31:43.744788",
+    "success": true,
+    "status": 200,
+    "title": "Example Domain",
+    "preview": "Example Domain Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more",
+    "matched_keywords": [],
+    "keyword_filter_active": false,
+    "kept": true,
+    "error": null
+  }
+]
