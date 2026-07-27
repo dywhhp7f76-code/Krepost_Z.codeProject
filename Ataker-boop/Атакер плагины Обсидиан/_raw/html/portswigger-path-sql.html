@@ -1,0 +1,964 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta content="IE=edge" http-equiv="X-UA-Compatible">
+        <meta content="width=device-width, initial-scale=1" name="viewport">
+
+        <title>SQL injection - PortSwigger</title>
+        <meta name="description" content="Web Security Academy offers tools for learning about web application security, testing &amp; scanning. Learn about a wide range of security tools &amp; identify the very latest vulnerabilities.">
+        <!-- Twitter data -->
+
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SQL injection - PortSwigger">
+    <meta name="twitter:description" content="Web Security Academy offers tools for learning about web application security, testing &amp; scanning. Learn about a wide range of security tools &amp; identify the very latest vulnerabilities.">
+<meta name="twitter:image" content="https://portswigger.net/content/images/logos/portswigger-twittercardlogo.png">
+
+<!-- Open Graph data -->
+<meta property="og:title" content="SQL injection - PortSwigger" />
+    <meta property="og:description" content="Web Security Academy offers tools for learning about web application security, testing &amp; scanning. Learn about a wide range of security tools &amp; identify the very latest vulnerabilities.">
+<meta property="og:url" content="https://portswigger.net/web-security/learning-paths/sql-injection" />
+<meta property="og:image" content="https://portswigger.net/content/images/logos/portswigger-twittercardlogo.png"/>
+<meta property="og:type" content="website"/>
+<link rel="canonical" href="https://portswigger.net/web-security/learning-paths/sql-injection" />
+<link rel="icon" href="/content/images/logos/favicon.ico" type="image/x-icon" />
+<link rel="apple-touch-icon" href="/content/images/logos/apple-touch-icon.png">
+        <link href="/content/pslearningpaths.css" rel="stylesheet" type="text/css">
+        <link rel="preload" href="/content/fonts/ps-icons-small/ps-icons-small.woff?td2uot" as="font" crossorigin="anonymous">
+<link rel="preload" href="/content/fonts/ps-main/ps-icons.woff?l1la2n" as="font" crossorigin="anonymous">
+            <script nonce="aIV9e/uTAW8Z9+nIWTIMeARWEs2hs3rE" type="text/javascript">
+        !function (t, e) {
+            var o, n, p, r;
+            e.__SV || (window.posthog && window.posthog.__loaded) || (window.posthog = e, e._i = [], e.init = function (i, s, a) {
+                function g(t, e) {
+                    var o = e.split(".");
+                    2 == o.length && (t = t[o[0]], e = o[1]), t[e] = function () {
+                        t.push([e].concat(Array.prototype.slice.call(arguments, 0)))
+                    }
+                }
+
+                (p = t.createElement("script")).type = "text/javascript", p.crossOrigin = "anonymous", p.async = !0, p.src = s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js", (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r);
+                var u = e;
+                for (void 0 !== a ? u = e[a] = [] : a = "posthog", u.people = u.people || [], u.toString = function (t) {
+                    var e = "posthog";
+                    return "posthog" !== a && (e += "." + a), t || (e += " (stub)"), e
+                }, u.people.toString = function () {
+                    return u.toString(1) + ".people (stub)"
+                }, o = "init Dr qr Ci Br Zr Pr capture calculateEventProperties Ur register register_once register_for_session unregister unregister_for_session Xr getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Jr identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty Gr Hr createPersonProfile setInternalOrTestUser Wr Fr tn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing $r debug ki Yr getPageViewId captureTraceFeedback captureTraceMetric Rr".split(" "), n = 0; n < o.length; n++) g(u, o[n]);
+                e._i.push([i, s, a])
+            }, e.__SV = 1)
+        }(document, window.posthog || []);
+        posthog.init('phc_zmnmWxifkm9THV54Mrn2XvFDL3Tq497pyRgrYbDu5PGW', {
+            api_host: 'https://phingest.portswigger.com',
+            defaults: '2026-01-30',
+            person_profiles: 'identified_only'
+        });
+    </script>
+
+    </head>
+    <body class="theme-">
+        
+
+<script nonce="aIV9e/uTAW8Z9+nIWTIMeARWEs2hs3rE">
+(function(window, document, dataLayerName, id) {
+    window[dataLayerName]=window[dataLayerName]||[],window[dataLayerName].push({start:(new Date).getTime(),event:"stg.start"});
+    var scripts=document.getElementsByTagName('script')[0],tags=document.createElement('script');
+    var qP = [];
+    dataLayerName !== "dataLayer" && qP.push("data_layer_name=" + dataLayerName), tags.nonce = "aIV9e/uTAW8Z9+nIWTIMeARWEs2hs3rE";
+var qPString=qP.length>0?("?"+qP.join("&")):"";
+    tags.async=!0,tags.src="https://ps.containers.piwik.pro/"+id+".js"+qPString,
+    scripts.parentNode.insertBefore(tags,scripts);
+    !function(a,n,i){a[n]=a[n]||{};for(var c=0;c<i.length;c++)!function(i){a[n][i]=a[n][i]||{},a[n][i].api=a[n][i].api||function(){
+    var a=[].slice.call(arguments,0);"string"==typeof a[0]&&window[dataLayerName].push({event:n+"."+i+":"+a[0],parameters:[].slice.call(arguments,1)})}}(i[c])}(window,"ppms",["tm","cm"]);
+    })(window, document, 'dataLayer', '287552c2-4917-42e0-8982-ba994a2a73d7');
+</script>
+        
+
+
+        <header class="page-header" id="top">
+            <div class="container">
+    <a class="logo" href="/"></a>
+    <div class="header-right">
+        <div class="login-buttons">
+                <a class="button-orange-small" href="/users">Login</a>
+        </div>
+        
+
+    <input type="checkbox" id="hamburger-mobile" class="hamburger-input-mobile">
+    <input type="radio" id="hamburger-desktop" class="hamburger-input-desktop" name="mega-nav-input">
+    <div class="hamburger-menu-mobile">
+        <label class="hamburger-menu-label header-hidden" for="hamburger-mobile">
+            <span class="hamburger-layers"></span>
+        </label>
+    </div>
+    <div class="mega-nav">
+        <input type="radio" id="mega-nav-close" class="mega-nav-input-close" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-1" class="mega-nav-input-1" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-2" class="mega-nav-input-2" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-6" class="mega-nav-input-6" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-7" class="mega-nav-input-7" name="mega-nav-input">
+
+        <label for="mega-nav-close" class="mega-nav-close"></label>
+
+        <label class="mega-nav-label mega-nav-label-1" for="mega-nav-label-1">
+            <span class="mega-nav-text">Products</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <label class="mega-nav-label mega-nav-label-2" for="mega-nav-label-2">
+            <span class="mega-nav-text">Solutions</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <a class="mega-nav-link" href="/research"><span class="mega-nav-text">Research</span></a>
+        <a class="mega-nav-link" href="/web-security"><span class="mega-nav-text">Academy</span></a>
+        <label class="mega-nav-label mega-nav-label-6" for="mega-nav-label-6">
+            <span class="mega-nav-text">Support</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+
+        <label class="mega-nav-label mega-nav-label-7 header-hidden" for="mega-nav-label-7">
+            <span class="mega-nav-text">Company</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <div class="hamburger-menu-desktop">
+            <label class="hamburger-menu-label header-show" for="hamburger-desktop">
+                <span class="hamburger-layers"></span>
+            </label>
+            <div>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+            </div>
+        </div>
+
+        <a class="mega-nav-link header-hidden" href="/users/youraccount"><span class="mega-nav-text">My account</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+
+        <div class="mega-nav-container">
+
+            <div class="mega-nav-content mega-nav-content-1">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <a href="/burp/burp-at" class="link-block-white">
+                                <img src="/mega-nav/images/burp-at.svg" alt="Burp AT">
+                                <span><strong>Burp AT</strong></span>
+                                <span>Agentic AI that extends human-led pentesting.</span>
+                            </a>
+
+                            <a href="/burp/enterprise" class="link-block-white">
+                                <img src="/content/images/svg/icons/enterprise.svg" alt="Burp Suite DAST">
+                                <span><strong>Burp Suite DAST</strong></span>
+                                <span>The enterprise-enabled dynamic web vulnerability scanner.</span>
+                            </a>
+
+                            <a href="/burp/pro" class="link-block-white">
+                                <img src="/content/images/svg/icons/professional.svg" alt="Burp Suite Professional">
+                                <span><strong>Burp Suite Professional</strong></span>
+                                <span>The world's #1 web penetration testing toolkit.</span>
+                            </a>
+
+                            <a href="/burp/communitydownload" class="link-block-white">
+                                <img src="/content/images/svg/icons/community.svg" alt="Burp Suite Community Edition">
+                                <span><strong>Burp Suite Community Edition</strong></span>
+                                <span>The best manual tools to start web security testing.</span>
+                            </a>
+
+                            <a href="/burp" class="chevron-after">View all product editions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/vulnerability-scanner">
+                                    <p><strong>Burp Scanner</strong></p>
+                                    <p>Burp Suite's web vulnerability scanner</p>
+                                    <img src="/mega-nav/images/burp-suite-scanner.jpg" alt="Burp Suite's web vulnerability scanner'">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-2">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/solutions/attack-surface-visibility" class="link-block-white">
+                                    <span><strong>Attack surface visibility</strong></span>
+                                    <span>Improve security posture, prioritize manual testing, free up time.</span>
+                                </a>
+                                <a href="/solutions/ci-driven-scanning" class="link-block-white">
+                                    <span><strong>CI-driven scanning</strong></span>
+                                    <span>More proactive security - find and fix vulnerabilities earlier.</span>
+                                </a>
+                                <a href="/solutions" class="link-block-white">
+                                    <span><strong>Application security testing</strong></span>
+                                    <span>See how our software enables the world to secure the web.</span>
+                                </a>
+                                <a href="/solutions/devsecops" class="link-block-white">
+                                    <span><strong>DevSecOps</strong></span>
+                                    <span>Catch critical bugs; ship more secure software, more quickly.</span>
+                                </a>
+
+                                <a href="/solutions/penetration-testing" class="link-block-white">
+                                    <span><strong>Penetration testing</strong></span>
+                                    <span>Accelerate penetration testing - find more bugs, more quickly.</span>
+                                </a>
+                                <a href="/solutions/automated-security-testing" class="link-block-white">
+                                    <span><strong>Automated scanning</strong></span>
+                                    <span>Scale dynamic scanning. Reduce risk. Save time/money.</span>
+                                </a>
+
+                                <a href="/solutions/bug-bounty-hunting" class="link-block-white">
+                                    <span><strong>Bug bounty hunting</strong></span>
+                                    <span>Level up your hacking and earn more bug bounties.</span>
+                                </a>
+                                <a href="/solutions/compliance" class="link-block-white">
+                                    <span><strong>Compliance</strong></span>
+                                    <span>Enhance security monitoring to comply with confidence.</span>
+                                </a>
+                            </div>
+                            <a href="/solutions" class="chevron-after">View all solutions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/dast/resources/dast-vs-professional">
+                                    <p><strong>Product comparison</strong></p>
+                                    <p>What's the difference between Pro and DAST?</p>
+                                    <img src="/mega-nav/images/burp-suite.jpg" alt="Burp Suite Professional vs Burp Suite DAST">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-6">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/support" class="link-block-white">
+                                    <span><strong>Support Center</strong></span>
+                                    <span>Get help and advice from our experts on all things Burp.</span>
+                                </a>
+                                <a href="/burp/documentation" class="link-block-white">
+                                    <span><strong>Documentation</strong></span>
+                                    <span>Tutorials and guides for Burp Suite.</span>
+                                </a>
+                                <a href="/burp/documentation/desktop/getting-started" class="link-block-white">
+                                    <span><strong>Get Started - Professional</strong></span>
+                                    <span>Get started with Burp Suite Professional.</span>
+                                </a>
+                                <a href="/burp/documentation/dast/setup" class="link-block-white">
+                                    <span><strong>Get Started - DAST</strong></span>
+                                    <span>Get started with Burp Suite DAST.</span>
+                                </a>
+                                <a href="/burp/releases" class="link-block-white">
+                                    <span><strong>Downloads</strong></span>
+                                    <span>Download the latest version of Burp Suite.</span>
+                                </a>
+                            </div>
+                            <a href="/support" class="chevron-after">Visit the Support Center</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/releases">
+                                    <p><strong>Downloads</strong></p>
+                                    <p>Download the latest version of Burp Suite.</p>
+                                    <img src="/mega-nav/images/latest-burp-suite-software-download.jpg" alt="The latest version of Burp Suite software for download">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    </div>
+</div>
+        </header>
+        
+<div class="wrapper">
+    <div class="section-full-width-medium-xx theme-navy-2">
+        <div>
+            <div class="margin-left-small margin-right-small">
+                <a href="/web-security/learning-paths/" class="chevron-before">Back to all learning paths</a>
+                <div class="margin-top-small">
+                    <span class="label  theme-enterprise-1">PRACTITIONER</span>
+                </div>
+                <h2 class="margin-top-tiny">SQL injection</h2>
+                <p class="font-size-16">This learning path introduces SQL injection (SQLi), a critical web vulnerability. You&#x27;ll learn how to detect and exploit SQLi to uncover hidden data and manipulate application behavior, as well as essential techniques to secure applications against SQLi attacks.</p>
+            </div>
+        </div>
+    </div>
+    <div class="section-full-width theme-white padding-bottom-medium">
+        <div class="learning-path-summary">
+            <h2 class="heading-navy-1">Contents</h2>
+            <div class="learning-path-summary-content">
+                <div class="learning-path-summary-header">
+                    <h3 class="heading-orange-1">Get started: What is SQL injection (SQLi)?</h3>
+                    <p>
+                        <svg height="11">
+                            <rect x="0.3" y="0.5" width="100%" height="10" rx="5" fill="#f2f3f6"></rect>
+                            <rect x="0.3" y="0.5" width="0%" height="10" rx="5" fill="#0066CC"></rect>
+                        </svg>
+                        <span class="margin-left-small heading-navy-1">0 of 51</span>
+                    </p>
+                </div>
+                <a class="button-orange margin-bottom-medium" href="/web-security/learning-paths/sql-injection/sql-injection-what-is-sql-injection/sql-injection/what-is-sql-injection-sqli">GET STARTED
+                                        <span class="icon-arrow-right margin-left-tiny"></span></a>
+            </div>
+            <hr class="custom-hr"/>
+        </div>
+    </div>
+
+    <div class="section-full-width theme-white">
+
+        <div class="expandable-progress-wrapper">
+            <details class="expandable-progress-container progress-status-in-progress next-progress-status-in-progress next-section-status-pending" open>
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-in-progress">
+                    <p>
+                        <strong>What is SQL injection?</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 1</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-in-progress  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-in-progress">
+                                What is SQL injection (SQLi)?
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                                    <a class="chevron-after margin-left-tiny" href="/web-security/learning-paths/sql-injection/sql-injection-what-is-sql-injection/sql-injection/what-is-sql-injection-sqli">Get started</a>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>How to detect SQL injection vulnerabilities</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                How to detect SQL injection vulnerabilities
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                SQL injection in different parts of the query
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Retrieving hidden data</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 3</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Retrieving hidden data
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Retrieving hidden data - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection vulnerability in WHERE clause allowing retrieval of hidden data
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Subverting application logic</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Subverting application logic
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection vulnerability allowing login bypass
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>SQL injection UNION attacks</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                SQL injection UNION attacks
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                SQL injection UNION attacks - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Determining the number of columns required</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 4</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Determining the number of columns required
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Determining the number of columns required - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection UNION attack, determining the number of columns returned by the query
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Database-specific syntax
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Finding columns with a useful data type</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Finding columns with a useful data type
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection UNION attack, finding a column containing text
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Using a SQL injection UNION attack to retrieve interesting data</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Using a SQL injection UNION attack to retrieve interesting data
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection UNION attack, retrieving data from other tables
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Retrieving multiple values within a single column</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Retrieving multiple values within a single column
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection UNION attack, retrieving multiple values in a single column
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Examining the database</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 5</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Examining the database in SQL injection attacks
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Querying the database type and version
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection attack, querying the database type and version on MySQL and Microsoft
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Listing the contents of the database
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection attack, listing the database contents on non-Oracle databases
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Blind SQL injection</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Blind SQL injection
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                What is blind SQL injection?
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Exploiting blind SQL injection by triggering conditional responses</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 4</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering conditional responses
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering conditional responses - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering conditional responses - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Blind SQL injection with conditional responses
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Error-based SQL injection</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 7</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Error-based SQL injection
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering conditional errors
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering conditional errors - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Blind SQL injection with conditional errors
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Extracting sensitive data via verbose SQL error messages
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Extracting sensitive data via verbose SQL error messages - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Visible error-based SQL injection
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Exploiting blind SQL injection by triggering time delays</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 3</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering time delays
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection by triggering time delays - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Blind SQL injection with time delays and information retrieval
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Exploiting blind SQL injection using out-of-band (OAST) techniques</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 5</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection using out-of-band (OAST) techniques
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection using out-of-band (OAST) techniques - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Blind SQL injection with out-of-band interaction
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Exploiting blind SQL injection using out-of-band (OAST) techniques - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: Blind SQL injection with out-of-band data exfiltration
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>SQL injection in different contexts</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                SQL injection in different contexts
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Lab: SQL injection with filter bypass via XML encoding
+                                    <span class="label theme-enterprise-1 margin-left-tiny">PRACTITIONER</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending next-section-status-pending" >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>Second-order SQL injection</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 1</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  next-section-status-pending">
+                            <p class="progress-status-circle progress-status-pending">
+                                Second-order SQL injection
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+            <details class="expandable-progress-container progress-status-pending next-progress-status-pending " >
+                <hr>
+                <summary class="expandable-progress-container-summary progress-status-circle progress-status-pending">
+                    <p>
+                        <strong>How to prevent SQL injection</strong>
+                        <span></span>
+                        <span class="expandable-progress-container-summary-amount">0 of 2</span>
+                    </p>
+                </summary>
+                <hr>
+                <div class="content">
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending next-progress-status-pending ">
+                            <p class="progress-status-circle progress-status-pending">
+                                How to prevent SQL injection
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                        <div class="expandable-progress-container-item progress-item-link progress-status-pending  ">
+                            <p class="progress-status-circle progress-status-pending">
+                                How to prevent SQL injection - Continued
+                                    <span class="label theme-dastardly margin-left-tiny">APPRENTICE</span>
+                            </p>
+                        </div>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+        <footer class="wrapper">
+    <div class="container">
+        <div>
+            <p>Burp Suite</p>
+            <a href="/burp/vulnerability-scanner">Web vulnerability scanner</a>
+            <a href="/burp">Burp Suite Editions</a>
+            <a href="/burp/releases">Release Notes</a>
+        </div>
+        <div>
+            <p>Vulnerabilities</p>
+            <a href="/web-security/cross-site-scripting">Cross-site scripting (XSS)</a>
+            <a href="/web-security/sql-injection">SQL injection</a>
+            <a href="/web-security/csrf">Cross-site request forgery</a>
+            <a href="/web-security/xxe">XML external entity injection</a>
+            <a href="/web-security/file-path-traversal">Directory traversal</a>
+            <a href="/web-security/ssrf">Server-side request forgery</a>
+        </div>
+        <div>
+            <p>Customers</p>
+            <a href="/organizations">Organizations</a>
+            <a href="/testers">Testers</a>
+            <a href="/developers">Developers</a>
+        </div>
+        <div>
+            <p>Company</p>
+            <a href="/about">About</a>
+            <a href="/careers">Careers</a>
+            <a href="/about/contact">Contact</a>
+            <a href="/legal">Legal</a>
+            <a href="/privacy">Privacy Notice</a>
+            <a href="/modern-slavery-statement">Modern Slavery Statement</a>
+        </div>
+        <div>
+            <p>Insights</p>
+            <a href="/web-security">Web Security Academy</a>
+            <a href="/blog">Blog</a>
+            <a href="/research">Research</a>
+            <a href="/engineering">Engineering</a>
+        </div>
+        <div>
+            <a href="/"><img src="/content/images/logos/portswigger-logo.svg" alt="PortSwigger Logo" class="footer-logo"></a>
+            <a class="button-outline-blue-small camelcase" href="https://twitter.com/Burp_Suite" rel="noreferrer"><span class="icon-twitter"></span>  Follow us</a>
+            <p class="grey">&copy; 2026 PortSwigger Ltd.</p>
+        </div>
+    </div>
+</footer>
+<a href="#top" class="back-to-top"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><polygon points="4.07 14.7 5.03 15.78 12.48 9.13 19.94 15.78 20.9 14.7 12.48 7.2 4.07 14.7" fill="#f63" /><path d="M13,0A13,13,0,1,0,26,13,13,13,0,0,0,13,0Zm0,24.56A11.56,11.56,0,1,1,24.56,13,11.58,11.58,0,0,1,13,24.56Z" fill="#f63" /></svg></a>
+
+        
+<script nonce="aIV9e/uTAW8Z9+nIWTIMeARWEs2hs3rE" type="text/javascript">
+    piAId = '1067743';
+    piCId = '';
+    piHostname = 'go.portswigger.net';
+
+    (function () {
+        function async_load() {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + piHostname + '/pd.js';
+            var c = document.getElementsByTagName('script')[0];
+            c.parentNode.insertBefore(s, c);
+        }
+
+        if (window.attachEvent) {
+            window.attachEvent('onload', async_load);
+        } else {
+            window.addEventListener('load', async_load, false);
+        }
+    })();
+</script>
+    </body>
+</html>
