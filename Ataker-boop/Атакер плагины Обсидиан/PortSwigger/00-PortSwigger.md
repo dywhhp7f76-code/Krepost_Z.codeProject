@@ -4,18 +4,17 @@ tags: [атакер, portswigger]
 
 # PortSwigger Web Security Academy
 
-Снимки HTML в `../_raw/html/portswigger-*.html`.
+Скачано глубже, чем хабы: теория + подстраницы → `pages/*.md` и `_raw/html/portswigger-deep/`.
 
-| Тема | Онлайн | Снимок |
-|------|--------|--------|
-| SQL injection | https://portswigger.net/web-security/sql-injection | `portswigger-sql-injection.html` |
-| path SQLi | https://portswigger.net/web-security/learning-paths/sql-injection | `portswigger-path-sql.html` |
-| Access control | https://portswigger.net/web-security/access-control | `portswigger-access-control.html` |
-| Business logic | https://portswigger.net/web-security/logic-flaws | `portswigger-logic-flaws.html` |
-| **Web LLM attacks** ⭐ | https://portswigger.net/web-security/llm-attacks | `portswigger-llm-attacks.html` |
-| path LLM | https://portswigger.net/web-security/learning-paths/llm-attacks | `portswigger-path-llm.html` |
-| SSTI | https://portswigger.net/web-security/server-side-template-injection | `portswigger-ssti.html` |
-| OS command injection | https://portswigger.net/web-security/os-command-injection | `portswigger-os-command.html` |
-| All labs | https://portswigger.net/web-security/all-labs | `portswigger-all-labs.html` |
+| Тема | Онлайн | Локально |
+|------|--------|----------|
+| SQL injection | https://portswigger.net/web-security/sql-injection | `pages/sql-injection.md` + blind/union/cheat-sheet/examining |
+| Access control | https://portswigger.net/web-security/access-control | + idor, security-models |
+| Business logic | https://portswigger.net/web-security/logic-flaws | + examples |
+| **Web LLM attacks** | https://portswigger.net/web-security/llm-attacks | + ai-powered-scanner |
+| SSTI | https://portswigger.net/web-security/server-side-template-injection | + exploiting |
+| OS command injection | https://portswigger.net/web-security/os-command-injection | `pages/os-command-injection.md` |
+| All labs | https://portswigger.net/web-security/all-labs | снимок |
 
-**Старт под Крепость-жертву:** LLM attacks → Logic → Access → SQLi/SSTI как школа «данные = инструкция».
+**Старт:** LLM attacks → Logic → Access → SQLi/SSTI.  
+Интерактивные lab-инстансы PortSwigger **не** клонируются — только учебные страницы.

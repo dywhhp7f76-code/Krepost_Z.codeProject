@@ -1,29 +1,41 @@
 ---
 tags: [атакер, obsidian, knowledge-base]
 created: 2026-07-27
+updated: 2026-07-27
 ---
 
-# Атакер — плагины Обсидиан (KB)
+# Атакер — плагины Обсидиан (KB) — MOC
 
-Офлайн-база **атакующих** источников для dirty-zone / Ataker.  
-Открыть в Obsidian: **Open folder as vault** → этот каталог  
-(или добавить как вложенную папку в основной vault).
+Офлайн-база **атакующих** источников. Open folder as vault → эта папка.
 
-## Структура
+## Что скачано (не просто ссылки)
 
-| Папка | Что |
-|-------|-----|
-| [[OWASP/00-OWASP-LLM-Top10\|OWASP]] | PDF Top 10 2025 + снимки карточек |
-| [[PortSwigger/00-PortSwigger\|PortSwigger]] | Academy: injection / access / logic / LLM |
-| [[MITRE/00-MITRE\|MITRE]] | ATLAS YAML + ATT&CK снимки |
-| [[Exploit-DB/00-Exploit-DB\|Exploit-DB]] | хаб / search / SearchSploit |
-| `_raw/` | сырые HTML + zip atlas-data |
-| [[Плагины-Obsidian\|Плагины Obsidian]] | что поставить в vault |
+### OWASP
+- PDF: `OWASP/OWASP-Top-10-for-LLMs-v2025.pdf`
+- Text extract: `OWASP/OWASP-Top-10-for-LLMs-v2025.md` (45 стр.)
+- **10 карточек рисков** → `OWASP/risks/llm01…llm10.md` + raw HTML
+- RU/EN resource pages в `_raw/html/`
 
-Полный список ссылок: [[SOURCES]].
+### PortSwigger
+- Теория + deep pages (SQLi blind/union/cheat-sheet, Access IDOR, Logic examples, SSTI exploiting, LLM + AI scanner, learning paths)  
+  → `PortSwigger/pages/*.md` + `_raw/html/portswigger-deep/`
 
-## Важно
+### MITRE
+- ATLAS YAML 2026.* → `MITRE/atlas-yaml/`
+- Полный zip atlas-data → `_raw/atlas-data-main.zip`
+- ATT&CK home + enterprise matrix → `MITRE/ATTCK-*.md`
 
-- Это **Red Team / Ataker**, не Крепость (defense → `krepost/07-RESEARCH/knowledge-bases/`).
-- Снимки HTML — для офлайна; канон всегда на сайте (ссылки в заметках).
-- Не коммитить яды / payload-корпуса сюда — только публичные доки.
+### Exploit-DB
+- **searchsploit** + CSV индексы (`files_exploits.csv` ~10MB) → `Exploit-DB/searchsploit/`  
+  (сами эксплойт-файлы 359MB **не** в git — индекс для поиска)
+
+## Навигация
+
+- [[SOURCES]]
+- [[Плагины-Obsidian]]
+- [[OWASP/00-OWASP-LLM-Top10]]
+- [[PortSwigger/00-PortSwigger]]
+- [[MITRE/00-MITRE]]
+- [[Exploit-DB/00-Exploit-DB]]
+
+Defense (Крепость) сюда не кладём.

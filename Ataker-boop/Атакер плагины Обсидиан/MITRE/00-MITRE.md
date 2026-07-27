@@ -4,22 +4,19 @@ tags: [атакер, mitre, atlas]
 
 # MITRE — ATLAS + ATT&CK
 
-## ATLAS (для AI — приоритет)
+## ATLAS
 
 - Хаб: https://atlas.mitre.org/
-- Data repo: https://github.com/mitre-atlas/atlas-data
+- Data: https://github.com/mitre-atlas/atlas-data
 - **Локально:**
-  - `ATLAS-2026.06.yaml` — актуальный matrix dump
-  - `../_raw/atlas-data-main.zip` — полный архив репо
-  - `atlas-data-README.md`, `atlas-data-LICENSE`
-  - снимок хаба: `../_raw/html/atlas-home.html` (тонкий SPA)
+  - `atlas-yaml/ATLAS-2026.*.yaml` (все релизы 2026)
+  - `ATLAS-2026.06.yaml` (корень MITRE)
+  - `_raw/atlas-data-main.zip`
+  - README/LICENSE atlas-data
 
-На ATLAS: 16 tactics · 173 techniques · 35 mitigations · 63 case studies.
+## ATT&CK
 
-## ATT&CK (enterprise)
+- https://attack.mitre.org/ · matrix: https://attack.mitre.org/matrices/enterprise/
+- **Локально:** [[ATTCK-home]] · [[ATTCK-enterprise]] + HTML снимки
 
-- https://attack.mitre.org/
-- Matrix: https://attack.mitre.org/matrices/enterprise/
-- Снимки: `../_raw/html/mitre-attack.html`, `mitre-enterprise.html`
-
-**Старт:** ATLAS matrix / YAML → 5–10 Technique ID в карточки KB. ATT&CK — для цепочек (Discovery, Defense Evasion, Impact).
+**Старт:** ATLAS YAML → Technique ID карточки. ATT&CK — цепочки.
