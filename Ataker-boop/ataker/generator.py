@@ -2,7 +2,7 @@
 Генератор атак для adversarial-тестирования SecurityPipeline.
 
 Создаёт payload'ы по категориям атак с мутациями.
-Может использовать LLM (Mistral-7B) для генерации новых вариаций.
+Может использовать LLM (Dolphin3-Cyber-8B Q4_K_M на Air) для генерации новых вариаций.
 """
 from __future__ import annotations
 

@@ -9,6 +9,18 @@
 
 ---
 
+- docs(ataker): канон attacker/judge = **Dolphin3-Cyber-8B Q4_K_M**
+  (`RavichandranJ/Dolphin3-Cyber-8B-GGUF`); пути AtakerDirty; env
+  `ATAKER_JUDGE_*`; скрипты `scripts/download_dolphin_air.sh`,
+  `scripts/smoke_ataker_judge_air.sh`; MODELS/README/Инструкция §10 /
+  SANDBOX_ZOO_AIR. Мутаций 17 (вкл. `icl_reorder`). Скачивание GGUF и
+  JUDGE-smoke — на Air у оператора (Cloud SSD не пишет).
+- Коммит: (этот PR)
+- Проверка: `bash scripts/download_dolphin_air.sh --dry-run` (без тома →
+  exit 1 ожидаемо); docs mention dolphin + Q4_K_M.
+
+---
+
 - feat(RoundTable): scaffold DebriefBroker + schemas + ModeGate + Air UI `:8011`
   (`krepost/roundtable/`, `scripts/serve_roundtable_air.sh`); Ataker `sealed.py`
   SealedEnvelope; Probnoki #60; Ataker `test_sealed_receipts`.
