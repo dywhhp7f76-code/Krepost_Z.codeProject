@@ -237,6 +237,13 @@ class AttackVault:
             for cat, cnt in rows:
                 by_category[cat] = cnt
 
+            by_source = {}
+            rows = conn.execute(
+                "SELECT source, COUNT(*) FROM payloads GROUP BY source ORDER BY COUNT(*) DESC"
+            ).fetchall()
+            for src, cnt in rows:
+                by_source[src or ""] = cnt
+
         return {
             "total_payloads": total,
             "tested": tested,
@@ -244,6 +251,8 @@ class AttackVault:
             "block_rate": (tested - bypassed) / tested if tested > 0 else 0,
             "open_weaknesses": open_weaknesses,
             "by_category": by_category,
+            "by_source": by_source,
+            "db_path": str(self._db_path),
         }
 
     def import_from_jsonl(

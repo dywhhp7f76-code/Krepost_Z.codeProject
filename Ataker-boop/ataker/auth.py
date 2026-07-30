@@ -2,14 +2,14 @@
 5-level access control for Ataker-boop Planner.
 
 Levels (по возрастанию опасности):
-  L1_POISONS   (🟢 ЯДЫ)         — всегда открыт, если нет kill
-  L2_CHIMERA   (🟡 ХИМЕРА)      — синтез гибридов, TOTP
-  L3_CODEBREAK (🔴 КОДЫ ВЗЛОМА) — code-gen + ingestion, TOTP
-  L4_AGENTS    (⚫ АГЕНТЫ)      — автономный swarm, TOTP
-  L5_KILL      (🛑 KILL SWITCH) — полная блокировка, статичный пароль
+  L1_POISONS   (🟢 ЯДЫ)         — обычные яды, TOTP (Google Authenticator)
+  L2_CHIMERA   (🟡 ХИМЕРА)      — яды + промпты / гибриды, TOTP
+  L3_CODEBREAK (🔴 КОДЫ ВЗЛОМА) — сложнее / code-gen + ingestion, TOTP
+  L4_AGENTS    (⚫ АГЕНТЫ)      — хакерский / автономный swarm, TOTP
+  L5_KILL      (🛑 KILL SWITCH) — полная блокировка, ОДИН статичный пароль оператора
 
-Последовательная разблокировка: L3 требует L2, L4 требует L3.
-L5 — исключение: доступен всегда, только блокирует (Fail-Safe Paradox).
+L1–L4 разблокируются кодом Authenticator. Последовательность: L2←L1, L3←L2, L4←L3.
+L5 — исключение: один пароль (придумывает оператор), только блокирует (Fail-Safe Paradox).
 """
 from __future__ import annotations
 
@@ -39,13 +39,14 @@ class CapabilityLevel(IntEnum):
     L4_AGENTS = 4
     L5_KILL = 5
 
-    #: Уровни которые разблокируются через TOTP (не L1, не L5).
+    #: Уровни которые разблокируются через TOTP (L1–L4; не L5).
     #: nonmember() marks this as a plain class attribute, not an enum member
     #: (required on Python 3.12+, otherwise the set value is passed to int()).
     UNLOCKABLE: Set["CapabilityLevel"] = nonmember(set())  # populated below
 
 
 CapabilityLevel.UNLOCKABLE = {
+    CapabilityLevel.L1_POISONS,
     CapabilityLevel.L2_CHIMERA,
     CapabilityLevel.L3_CODEBREAK,
     CapabilityLevel.L4_AGENTS,
@@ -54,15 +55,14 @@ CapabilityLevel.UNLOCKABLE = {
 
 @dataclass
 class PlannerCapabilities:
-    """Текущий уровень доступа Творца. L1 всегда открыт, остальные по коду."""
-    unlocked_levels: Set[CapabilityLevel] = field(
-        default_factory=lambda: {CapabilityLevel.L1_POISONS}
-    )
+    """Текущий уровень доступа Творца. L1–L4 только по TOTP; старт — всё закрыто."""
+
+    unlocked_levels: Set[CapabilityLevel] = field(default_factory=set)
     fully_locked: bool = False  # True когда активирован L5 kill switch
 
     @classmethod
     def locked(cls) -> "PlannerCapabilities":
-        """Только L1 открыт."""
+        """Ничего не открыто (нужен TOTP L1)."""
         return cls()
 
     def has(self, level: CapabilityLevel) -> bool:
@@ -72,9 +72,6 @@ class PlannerCapabilities:
         if level == CapabilityLevel.L5_KILL:
             return True  # kill доступен всегда (для остановки)
         return all(l in self.unlocked_levels for l in CapabilityLevel if 1 <= l <= level)
-
-
-
 
     def unlock(self, level: CapabilityLevel, code: str, auth: "AuthManager") -> bool:
         if level == CapabilityLevel.L5_KILL:
@@ -88,7 +85,7 @@ class PlannerCapabilities:
             return False
         if not auth.verify_totp(level, code):
             return False
-        if level > CapabilityLevel.L2_CHIMERA:
+        if level > CapabilityLevel.L1_POISONS:
             required = CapabilityLevel(level - 1)
             if required not in self.unlocked_levels:
                 return False
@@ -103,14 +100,14 @@ class PlannerCapabilities:
         if not auth.verify_kill_password(password):
             return False
         self.fully_locked = False
-        self.unlocked_levels = {CapabilityLevel.L1_POISONS}
+        self.unlocked_levels = set()  # снова нужен TOTP L1
         return True
-
 
 
 PathLike = Union[str, Path]
 
 _TOTP_FILES = {
+    CapabilityLevel.L1_POISONS: "totp_l1",
     CapabilityLevel.L2_CHIMERA: "totp_l2",
     CapabilityLevel.L3_CODEBREAK: "totp_l3",
     CapabilityLevel.L4_AGENTS: "totp_l4",
@@ -267,13 +264,44 @@ def _totp_uri(secret: str, level: CapabilityLevel) -> str:
     return pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name="Ataker-boop")
 
 
+def _print_totp_uris(secrets_dir: Path) -> None:
+    print("=== TOTP QR-\u043a\u043e\u0434\u044b ===")
+    for level, fname in _TOTP_FILES.items():
+        p = secrets_dir / fname
+        if not p.is_file():
+            print(f"\n[{level.name}] missing: {fname}")
+            continue
+        secret = p.read_text().strip()
+        print()
+        print(f"[{level.name}]")
+        print(f"  {_totp_uri(secret, level)}")
+
+
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(prog="ataker.auth")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    p_init = sub.add_parser("init")
-    p_init.add_argument("--dir", default=os.path.expanduser("~/.ataker"))
+    default_dir = os.path.expanduser("~/.ataker")
+
+    p_init = sub.add_parser("init", help="Create secrets dir + TOTP L1-L4 + kill hash")
+    p_init.add_argument("--dir", default=default_dir)
     p_init.add_argument("--kill-password", default=None)
+
+    p_show = sub.add_parser("show-uri", help="Reprint otpauth:// URIs from existing secrets")
+    p_show.add_argument("--dir", default=default_dir)
+
+    p_status = sub.add_parser("status", help="Show which secret files exist (no secrets printed)")
+    p_status.add_argument("--dir", default=default_dir)
+
+    p_verify = sub.add_parser("verify", help="Verify a TOTP code for a level")
+    p_verify.add_argument("--dir", default=default_dir)
+    p_verify.add_argument(
+        "--level",
+        required=True,
+        choices=[lv.name for lv in CapabilityLevel.UNLOCKABLE],
+    )
+    p_verify.add_argument("--code", required=True)
+
     args = parser.parse_args()
 
     if args.cmd == "init":
@@ -281,25 +309,48 @@ def main() -> None:
         if kill_pw is None:
             kill_pw = input("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 KILL PASSWORD (L5): ").strip()
             if not kill_pw:
-                print("\u041e\u0448\u0438\u0431\u043a\u0430: kill password \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c", file=sys.stderr)
+                print(
+                    "\u041e\u0448\u0438\u0431\u043a\u0430: kill password \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
 
         init_secrets_dir(args.dir, kill_pw)
         print(f"\u2713 \u0421\u0435\u043a\u0440\u0435\u0442\u044b \u0441\u043e\u0437\u0434\u0430\u043d\u044b \u0432 {args.dir}")
         print()
-        print("=== TOTP QR-\u043a\u043e\u0434\u044b ===")
-        for level, fname in _TOTP_FILES.items():
-            secret = (Path(args.dir) / fname).read_text().strip()
-            uri = _totp_uri(secret, level)
-            print()
-            print(f"[{level.name}]")
-            print(f"  {uri}")
+        _print_totp_uris(Path(args.dir))
         ingest = (Path(args.dir) / "ingest_token").read_text().strip()
         print()
         print("=== Ingest token ===")
         print(f"  {ingest}")
         print()
         print("\u26a0\ufe0f  \u0421\u041e\u0425\u0420\u0410\u041d\u0418 KILL PASSWORD \u0412 \u041d\u0410\u0414\u0415\u0416\u041d\u041e\u0415 \u041c\u0415\u0421\u0422\u041e.")
+        return
+
+    if args.cmd == "show-uri":
+        secrets_dir = Path(args.dir)
+        if not secrets_dir.is_dir():
+            print(f"\u043d\u0435\u0442 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430: {secrets_dir}", file=sys.stderr)
+            sys.exit(1)
+        _print_totp_uris(secrets_dir)
+        return
+
+    if args.cmd == "status":
+        secrets_dir = Path(args.dir)
+        print(f"dir={secrets_dir} exists={secrets_dir.is_dir()}")
+        if not secrets_dir.is_dir():
+            sys.exit(1)
+        for fname in list(_TOTP_FILES.values()) + ["kill_password_hash", "ingest_token"]:
+            p = secrets_dir / fname
+            print(f"  {fname}: {'ok' if p.is_file() else 'MISSING'}")
+        return
+
+    if args.cmd == "verify":
+        auth = AuthManager.from_secrets_dir(args.dir)
+        level = CapabilityLevel[args.level]
+        ok = auth.verify_totp(level, args.code)
+        print("OK" if ok else "FAIL")
+        sys.exit(0 if ok else 2)
 
 
 if __name__ == "__main__":

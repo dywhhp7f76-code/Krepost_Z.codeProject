@@ -10,8 +10,9 @@
 
 | Роль | Кто | Модель | Quant | ~размер | HF |
 |------|-----|--------|-------|---------|-----|
-| **1. Творец (Planner)** | пишет стратегии / атаки / judge | **Dolphin3-Cyber-8B** | **Q4_K_M** | ~4.9 GB | [`RavichandranJ/Dolphin3-Cyber-8B-GGUF`](https://huggingface.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF) |
-| **2. Исполнитель (Executor)** | «стреляет» payload'ами / лёгкий слот | **Llama-3.2-3B-Instruct-abliterated** | **Q4_K_M** | ~2.0 GB | [`QuantFactory/Llama-3.2-3B-Instruct-abliterated-GGUF`](https://huggingface.co/QuantFactory/Llama-3.2-3B-Instruct-abliterated-GGUF) |
+| **1. Творец (Planner)** | пишет стратегии / атаки / judge | **Dolphin3-Cyber-8B** | **Q4_K_S / Q4** | ~4.7 GB | [`RavichandranJ/Dolphin3-Cyber-8B-GGUF`](https://huggingface.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF) — **рабочий канон на Air** |
+| **2. Исполнитель (Executor)** | «стреляет» payload'ами / лёгкий слот | **Llama-3.2-3B-Instruct-abliterated** | **Q4_K_M** | ~2.1 GB | local LM Studio id `llama-3.2-3b-instruct-abliterated` |
+| ~~Meta 8B abliterated Q5~~ | ~~альтернативный planner~~ | **не использовать в чате** | Q5_K_L | ~6.1 GB | ранний EOS / word salad на Air; файл можно оставить на диске |
 | Sandbox guard | Layer 2 песочницы | Qwen3Guard-Gen-4B | Q4 | — | LM Studio; **не** uncensored |
 
 ### Файлы GGUF
@@ -47,12 +48,12 @@ bash scripts/download_ataker_models_air.sh --executor
 3. Запомнить ids из UI / `curl …/v1/models`.
 
 ```bash
-# пример env (подставь свои id из LM Studio)
+# канон Air (Dolphin planner + 3B executor) — совпадает с env.fortress.sh на SSD
 export ATAKER_LMSTUDIO_URL=http://127.0.0.1:1234/v1
-export ATAKER_PLANNER_MODEL=<id Dolphin / Planner>
-export ATAKER_EXECUTOR_MODEL=<id Llama-3.2-3B / Executor>
+export ATAKER_PLANNER_MODEL=dolphin3-cyber-8b
+export ATAKER_EXECUTOR_MODEL=llama-3.2-3b-instruct-abliterated
 export ATAKER_JUDGE_URL=http://127.0.0.1:1234
-export ATAKER_JUDGE_MODEL="${ATAKER_PLANNER_MODEL}"   # judge = Творец, пока так
+export ATAKER_JUDGE_MODEL="${ATAKER_PLANNER_MODEL}"
 
 curl -s "${ATAKER_LMSTUDIO_URL}/models" | head
 # чеклист: оба id видны → готовка моделей OK
