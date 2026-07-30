@@ -338,6 +338,125 @@
 
 ---
 
+## 🆕 Разведданные 2026-07-19 (github-copilot-expert) — методики после live-стека
+
+> Источник: `defense|evolution|foundation|memory/2026-07-19.md`.
+> Разбор 2026-07-21. Боевой стек Studio жив; Ataker на Air — у параллельного
+> агента. Ценность дня: **egress/exfil на agent path**, harness hygiene,
+> SOCM/Failure Memory, bitemporal metadata — **не** смена инференс-движка.
+>
+> Легенда колонки **Когда:** как в секции 2026-07-16 (СЕЙЧАС / СКОРО / ПОТОМ / НЕ БРАТЬ).
+
+### Сводная таблица (что ставить и на каком этапе)
+
+| Приоритет | Что | Этап Крепости | Когда | Зачем |
+|-----------|-----|---------------|-------|-------|
+| 1 | Egress/exfil guardrail: memory/vault → external tool | defense + memory / harness | **СЕЙЧАС→СКОРО** | Связка episodic + `fetch_url` = silent data exfil (Habr Claude memory) |
+| 2 | Instruction-span + malware-in-data (AI-артефакты в payload) | defense L1 / ToolOutputGuard | **СКОРО** | Малварь/файлы с «ignore previous» для LLM-сканера |
+| 3 | Harness hygiene: done-detect / anti-loop / context trim | foundation/harness → evolution | **СКОРО** | Цикл агента ≠ модель (Codex/OpenCode/Pi) |
+| 4 | SOCM lite: Failure Memory + coverage hint в retrieve | memory / Hierarchical RAG | **СКОРО** | Не крутить бесполезный retrieval; контроль полноты |
+| 5 | Self-critique verify-step + код RELAI verifier | evolution + governance | **СКОРО** (после Ataker UCS) | Второй проход истины до commit; правило RELAI уже ✅ |
+| 6 | Anomaly rank промптов/ответов в metrics | defense / metrics | **СКОРО** | Усиление sanitization+anomaly (PortSwigger HTTP Anomaly Rank снова) |
+| 7 | Bitemporal metadata (`valid_*` / `learned_at`) на episodic/raw | memory / episodic | **СКОРО→ПОТОМ** | «Что знал тогда»; откат отравленных записей |
+| 8 | probe_latency + speculative decoding только после замера | foundation ops | **СКОРО** (ops) | Speculative может быть налогом (Strix Halo); не включать вслепую |
+| — | Full Evidence Graph / LedgerAgent-style state | memory | **ПОТОМ** | После SOCM lite + стабильного Hierarchical |
+| — | PRISM hidden-state probe (CD/PD) | defense L2 research | **ПОТОМ** | Нужен доступ к full hidden states локальной модели |
+| — | SciDiagramEdit skill-evolution / AutoSynthesis-цепи | evolution / RSI | **ПОТОМ** | Только через ImprovementGate + RELAI + Ataker suite |
+| — | vLLM ≥0.25.1 (MRv2, dtype-guard) вместо LM Studio | foundation | **ПОТОМ** (если latency упрётся) | Pin ≥0.25.1; дефолт LM Studio не трогать |
+| — | LocalAI 4.6–4.7 как основной serving | foundation | **НЕ БРАТЬ** | Паттерны (cooldown/watchdog/SSRF) — да; миграция — нет |
+| — | KTransformers 671B / tokenizer expansion / Inferentia / Triton | foundation | **НЕ БРАТЬ** | Мимо железа Studio+Air / threat model |
+| — | MeanFlowNFT / NeuronSoup-as-architecture / diffusion RL | evolution | **НЕ БРАТЬ** | Research RL, не текущий gate |
+
+### defense — детали (2026-07-19)
+
+#### Egress/exfil guardrail на agent path  🔜 СЕЙЧАС→СКОРО · этап **defense + memory**
+- **Что:** память сама безопасна; опасна связка **episodic/search + агент с внешним каналом**.
+  Semantic sanitization исходящих tool-payloads; запрет/карантин отправки фрагментов,
+  похожих на episodic/PII; детект аномального объёма `memory_search` / `vault_read`
+  перед `fetch_url`.
+- **Ставить:** heuristic/policy на harness сначала; не PRISM-уровень ML.
+- **Откуда:** defense/2026-07-19 (Habr: кража памяти Claude через агента).
+
+#### Instruction-span + AI-артефакты в данных  🔜 СКОРО · этап **defense L1**
+- **Что:** внешние тексты/файлы/retrieval — data, не commands. Паттерны
+  «ignore previous» / «NO MALWARE DETECTED» в ingest + ToolOutputGuard
+  (Check Point: малварь заговаривает LLM-сканер).
+- **Усиливает:** уже запланированный Instruction-span детектор (defense/2026-07-01+).
+- **Откуда:** defense/2026-07-19.
+
+#### Anomaly rank (уточнение)  ⏳ СКОРО · этап **defense / metrics**
+- **Что:** ранжировать необычность промпт/ответ (не только block/allow); рядом с
+  Prompt sanitization + anomaly scoring (defense/2026-07-16).
+- **Откуда:** defense/2026-07-19 (PortSwigger HTTP Anomaly Rank) + 2026-07-01/02.
+
+#### PRISM hidden-state probe  ⏸ ПОТОМ · этап **defense L2 research**
+- **Что:** single-layer probe по full hidden states (content-danger vs physical-danger),
+  низкий FPR vs LLM-судьи.
+- **Почему не сейчас:** LM Studio/llama.cpp не всегда отдают full activations.
+- **Откуда:** defense/2026-07-19 (arXiv 2607.15218).
+
+### memory — детали (2026-07-19)
+
+#### SOCM lite: Failure Memory + Coverage  🔜 СКОРО · этап **memory / Hierarchical RAG**
+- **Что:** из SearchOS-V1 — externalize search state: Failure Memory (не повторять
+  бесполезный retrieve), Coverage Map (полнота доменов), Evidence Graph как
+  усиление HierarchicalTrace + citations (не весь SearchOS).
+- **Рядом с:** DART-VLN anti-loop (уже в ROADMAP), MemoryRouter, source citations ✅.
+- **Откуда:** memory/2026-07-19 (arXiv 2607.15257 SearchOS-V1).
+
+#### Bitemporal metadata на episodic/raw  ⏳ СКОРО→ПОТОМ · этап **memory**
+- **Что:** `valid_from` / `valid_to` / `learned_at` (valid-time + transaction-time);
+  retrieve as-of; откат отравленных записей; аудит «что агент знал тогда».
+- **Ставить:** metadata + фильтр; не полный rewrite Chroma.
+- **Усиливает:** immutable raw ✅ (#41).
+- **Откуда:** memory/2026-07-19 (Bitemporal AI Memory).
+
+#### Retrain-free embedding sketches  ⏸ ПОТОМ · этап **memory research**
+- **Что:** инкрементальные эмбеддинги без полного reindex (Mutable Low-Rank Sketches).
+- **Почему не сейчас:** BGE+Chroma хватает на текущем vault.
+- **Откуда:** memory/2026-07-19 (arXiv 2607.15242).
+
+### evolution — детали (2026-07-19)
+
+#### Self-critique verify-step  🔜 СКОРО · этап **evolution**
+- **Что:** второй проход проверки истинности до accept действия агента
+  (паттерн хакатона Built with Claude); опционально в ToolAgent / gate proposal.
+- **Ставить код:** после Ataker Useful/Correct/Safe; правило RELAI уже fail-closed.
+- **Откуда:** evolution/2026-07-19 (Habr).
+
+#### Harness hygiene (done / anti-loop / context)  🔜 СКОРО · этап **foundation/harness**
+- **Что:** сжимать контекст, не переделывать сделанное, явный сигнал «задача завершена».
+- **Точечно** в существующий `/v1/agent` loop — не полный rewrite harness.
+- **Откуда:** evolution/2026-07-19 (Habr: Codex/OpenCode/Pi harness).
+
+#### Skill-evolution / AutoSynthesis-цепи  ⏸ ПОТОМ · этап **evolution / RSI**
+- **Что:** proposer уточняет skill-спеку по traces; multi-agent synthesis с аудитом.
+- **Только** через ImprovementGate + RELAI + Ataker suite.
+- **Откуда:** evolution/2026-07-19 (SciDiagramEdit arXiv 2607.15272; AutoSynthesis 2607.15247).
+
+### foundation — детали (2026-07-19)
+
+#### Latency probe + speculative caveat  🔜 СКОРО · этап **foundation ops**
+- **Что:** прогон `scripts/probe_latency.py` с multi-concurrency; speculative decoding
+  валидировать на своей нагрузке (может замедлять).
+- **Не** менять backend.
+- **Откуда:** foundation/2026-07-19 (Habr Strix Halo 236 tok/s).
+
+#### vLLM ≥0.25.1 при первом боевом включении  ⏸ ПОТОМ · этап **foundation**
+- **Что:** MRv2 default, legacy PagedAttention удалён; dtype-guard против мусора
+  на mixed-dtype quant (v0.25.1). Обновить `vllm_serve.example.sh` комментарий
+  когда/если переключаемся.
+- **Канон:** LM Studio остаётся дефолтом.
+- **Откуда:** foundation/2026-07-19 (vLLM 0.25.0 / 0.25.1).
+
+#### LocalAI 4.6–4.7 — только паттерны  ❌ НЕ БРАТЬ как serving
+- **Что полезно:** model-load cooldown, parent-watch (анти-VRAM leak),
+  fail-open аналогия для resource caps; SSRF gallery уже закрыт UrlGuard.
+- **Не** мигрировать serving на LocalAI.
+- **Откуда:** foundation/2026-07-19 (LocalAI v4.6–4.7).
+
+---
+
 ## 🆕 Разведданные 2026-07-16 (github-copilot-expert) — очередь после live-стека
 
 > Источник: `defense|evolution|foundation|memory|redteam/2026-07-16.md`.
@@ -411,7 +530,7 @@
 
 #### Prompt sanitization + anomaly scoring  ⏳ СКОРО · этап **defense L1 + metrics**
 - **Ставить:** после MemoryRouter scaffold или параллельно с алертами; не ломать fail-closed Guard.
-- **Откуда:** defense/2026-07-16.
+- **Откуда:** defense/2026-07-16; уточнение anomaly rank — defense/2026-07-19 (см. секцию выше).
 
 ### redteam — детали
 
@@ -435,7 +554,8 @@
 
 #### Bonsai 1-bit / vLLM 0.25 / Ollama MTP  ⏸ ПОТОМ · этап **foundation**
 - **Ставить:** только если latency/память упрутся; не менять живой LM Studio «ради релиза».
-- **Откуда:** foundation/2026-07-16.
+  При первом vLLM — pin ≥ **0.25.1** (см. foundation/2026-07-19 выше).
+- **Откуда:** foundation/2026-07-16; pin 0.25.1 — foundation/2026-07-19.
 
 ---
 
