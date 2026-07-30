@@ -26,32 +26,34 @@ class TestCapabilityLevel:
         assert CapabilityLevel.L4_AGENTS.value == 4
         assert CapabilityLevel.L5_KILL.value == 5
 
-    def test_unlockable_excludes_l1_and_l5(self):
-        """L1 always open, L5 is kill (different mechanism)."""
-        assert CapabilityLevel.L1_POISONS not in CapabilityLevel.UNLOCKABLE
-        assert CapabilityLevel.L5_KILL not in CapabilityLevel.UNLOCKABLE
+    def test_unlockable_includes_l1_to_l4_not_l5(self):
+        """L1–L4 = Google Authenticator; L5 = один kill-пароль."""
+        assert CapabilityLevel.L1_POISONS in CapabilityLevel.UNLOCKABLE
         assert CapabilityLevel.L2_CHIMERA in CapabilityLevel.UNLOCKABLE
         assert CapabilityLevel.L3_CODEBREAK in CapabilityLevel.UNLOCKABLE
         assert CapabilityLevel.L4_AGENTS in CapabilityLevel.UNLOCKABLE
+        assert CapabilityLevel.L5_KILL not in CapabilityLevel.UNLOCKABLE
 
 
 class TestPlannerCapabilitiesLocked:
-    def test_locked_factory_has_only_l1(self):
+    def test_locked_factory_has_nothing(self):
         caps = PlannerCapabilities.locked()
-        assert caps.has(CapabilityLevel.L1_POISONS) is True
+        assert caps.has(CapabilityLevel.L1_POISONS) is False
         assert caps.has(CapabilityLevel.L2_CHIMERA) is False
         assert caps.has(CapabilityLevel.L3_CODEBREAK) is False
         assert caps.has(CapabilityLevel.L4_AGENTS) is False
 
     def test_has_requires_all_lower_levels(self):
-        """L3 требует L2 — если L2 не открыт, L3 тоже False."""
+        """L3 требует L1+L2 — если L2 не открыт, L3 тоже False."""
         caps = PlannerCapabilities.locked()
+        caps.unlocked_levels.add(CapabilityLevel.L1_POISONS)
         caps.unlocked_levels.add(CapabilityLevel.L3_CODEBREAK)
         # L2 не открыт → L3 has() должен вернуть False
         assert caps.has(CapabilityLevel.L3_CODEBREAK) is False
 
-    def test_has_l3_true_when_l2_also_unlocked(self):
+    def test_has_l3_true_when_l1_l2_also_unlocked(self):
         caps = PlannerCapabilities.locked()
+        caps.unlocked_levels.add(CapabilityLevel.L1_POISONS)
         caps.unlocked_levels.add(CapabilityLevel.L2_CHIMERA)
         caps.unlocked_levels.add(CapabilityLevel.L3_CODEBREAK)
         assert caps.has(CapabilityLevel.L3_CODEBREAK) is True
@@ -59,6 +61,7 @@ class TestPlannerCapabilitiesLocked:
     def test_fully_locked_blocks_even_l1(self):
         """Kill switch блокирует даже L1."""
         caps = PlannerCapabilities.locked()
+        caps.unlocked_levels.add(CapabilityLevel.L1_POISONS)
         caps.fully_locked = True
         assert caps.has(CapabilityLevel.L1_POISONS) is False
 
@@ -207,43 +210,64 @@ class TestAuthManagerIngestToken:
 
 
 class TestPlannerCapabilitiesUnlock:
-    def _auth_with_l2(self):
+    def _auth_with_l1_l2(self):
+        l1 = pyotp.random_base32()
+        l2 = pyotp.random_base32()
+        auth = AuthManager.from_totp_secrets({
+            CapabilityLevel.L1_POISONS: l1,
+            CapabilityLevel.L2_CHIMERA: l2,
+        })
+        return auth, l1, l2
+
+    def test_unlock_l1_with_valid_totp(self):
         secret = pyotp.random_base32()
-        auth = AuthManager.from_totp_secrets({CapabilityLevel.L2_CHIMERA: secret})
-        return auth, secret
-
-    def test_unlock_l2_with_valid_totp(self):
-        auth, secret = self._auth_with_l2()
+        auth = AuthManager.from_totp_secrets({CapabilityLevel.L1_POISONS: secret})
         caps = PlannerCapabilities.locked()
-        code = pyotp.TOTP(secret).now()
+        assert caps.unlock(CapabilityLevel.L1_POISONS, pyotp.TOTP(secret).now(), auth) is True
+        assert caps.has(CapabilityLevel.L1_POISONS) is True
 
-        assert caps.unlock(CapabilityLevel.L2_CHIMERA, code, auth) is True
+    def test_unlock_l2_requires_l1_first(self):
+        auth, _l1, l2 = self._auth_with_l1_l2()
+        caps = PlannerCapabilities.locked()
+        assert caps.unlock(CapabilityLevel.L2_CHIMERA, pyotp.TOTP(l2).now(), auth) is False
+
+    def test_unlock_l2_with_valid_totp_after_l1(self):
+        auth, l1, l2 = self._auth_with_l1_l2()
+        caps = PlannerCapabilities.locked()
+        assert caps.unlock(CapabilityLevel.L1_POISONS, pyotp.TOTP(l1).now(), auth) is True
+        assert caps.unlock(CapabilityLevel.L2_CHIMERA, pyotp.TOTP(l2).now(), auth) is True
         assert caps.has(CapabilityLevel.L2_CHIMERA) is True
 
     def test_unlock_l2_with_invalid_totp_fails(self):
-        auth, _ = self._auth_with_l2()
+        auth, l1, _l2 = self._auth_with_l1_l2()
         caps = PlannerCapabilities.locked()
-
+        caps.unlock(CapabilityLevel.L1_POISONS, pyotp.TOTP(l1).now(), auth)
         assert caps.unlock(CapabilityLevel.L2_CHIMERA, "000000", auth) is False
         assert caps.has(CapabilityLevel.L2_CHIMERA) is False
 
     def test_unlock_l3_requires_l2_first(self):
+        l1 = pyotp.random_base32()
         l3_secret = pyotp.random_base32()
-        auth = AuthManager.from_totp_secrets({CapabilityLevel.L3_CODEBREAK: l3_secret})
+        auth = AuthManager.from_totp_secrets({
+            CapabilityLevel.L1_POISONS: l1,
+            CapabilityLevel.L3_CODEBREAK: l3_secret,
+        })
         caps = PlannerCapabilities.locked()
+        caps.unlock(CapabilityLevel.L1_POISONS, pyotp.TOTP(l1).now(), auth)
         code = pyotp.TOTP(l3_secret).now()
-
         assert caps.unlock(CapabilityLevel.L3_CODEBREAK, code, auth) is False
 
     def test_unlock_l3_after_l2_succeeds(self):
+        l1 = pyotp.random_base32()
         l2_secret = pyotp.random_base32()
         l3_secret = pyotp.random_base32()
         auth = AuthManager.from_totp_secrets({
+            CapabilityLevel.L1_POISONS: l1,
             CapabilityLevel.L2_CHIMERA: l2_secret,
             CapabilityLevel.L3_CODEBREAK: l3_secret,
         })
         caps = PlannerCapabilities.locked()
-
+        caps.unlock(CapabilityLevel.L1_POISONS, pyotp.TOTP(l1).now(), auth)
         caps.unlock(CapabilityLevel.L2_CHIMERA, pyotp.TOTP(l2_secret).now(), auth)
         assert caps.unlock(CapabilityLevel.L3_CODEBREAK, pyotp.TOTP(l3_secret).now(), auth) is True
 
@@ -265,17 +289,17 @@ class TestPlannerCapabilitiesUnlock:
         result = caps.unlock(CapabilityLevel.L5_KILL, "wrong", auth)
         assert result is False
         assert caps.fully_locked is False
-        assert caps.has(CapabilityLevel.L1_POISONS) is True
+        assert caps.has(CapabilityLevel.L1_POISONS) is False
 
     def test_unlock_blocked_when_fully_locked(self):
         auth = AuthManager()
-        auth.set_totp_secret(CapabilityLevel.L2_CHIMERA, pyotp.random_base32())
+        auth.set_totp_secret(CapabilityLevel.L1_POISONS, pyotp.random_base32())
         caps = PlannerCapabilities.locked()
         caps.fully_locked = True
 
-        secret = auth._totp_secrets[CapabilityLevel.L2_CHIMERA]
+        secret = auth._totp_secrets[CapabilityLevel.L1_POISONS]
         code = pyotp.TOTP(secret).now()
-        assert caps.unlock(CapabilityLevel.L2_CHIMERA, code, auth) is False
+        assert caps.unlock(CapabilityLevel.L1_POISONS, code, auth) is False
 
     def test_reset_kill_requires_password(self):
         auth = AuthManager()
@@ -287,6 +311,7 @@ class TestPlannerCapabilitiesUnlock:
         assert caps.fully_locked is True
         assert caps.reset_kill("secret", auth) is True
         assert caps.fully_locked is False
+        assert caps.has(CapabilityLevel.L1_POISONS) is False
         assert caps.has(CapabilityLevel.L2_CHIMERA) is False
 
     def test_fail_safe_paradox_l5_cannot_unlock_l2(self):
@@ -317,6 +342,7 @@ class TestSecretFileIO:
     def test_init_creates_all_secret_files(self, tmp_path):
         secrets_dir = tmp_path / "s"
         init_secrets_dir(secrets_dir, kill_password="my_kill")
+        assert (secrets_dir / "totp_l1").is_file()
         assert (secrets_dir / "totp_l2").is_file()
         assert (secrets_dir / "totp_l3").is_file()
         assert (secrets_dir / "totp_l4").is_file()
@@ -328,7 +354,7 @@ class TestSecretFileIO:
             pytest.skip("chmod only on posix")
         secrets_dir = tmp_path / "s"
         init_secrets_dir(secrets_dir, kill_password="my_kill")
-        for fname in ["totp_l2", "totp_l3", "totp_l4", "kill_password_hash", "ingest_token"]:
+        for fname in ["totp_l1", "totp_l2", "totp_l3", "totp_l4", "kill_password_hash", "ingest_token"]:
             mode = (secrets_dir / fname).stat().st_mode & 0o777
             assert mode == 0o600, f"{fname} has mode {oct(mode)}, expected 0o600"
 
@@ -381,7 +407,7 @@ class TestInitCLI:
             ["ataker.auth", "init", "--dir", str(secrets_dir), "--kill-password", "x"])
         main()
         captured = capsys.readouterr()
-        assert captured.out.count("otpauth://") == 3
+        assert captured.out.count("otpauth://") == 4
         assert "L2" in captured.out
 
     def test_main_init_prompts_kill_password_if_missing(self, tmp_path, monkeypatch, capsys):

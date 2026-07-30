@@ -2,14 +2,14 @@
 5-level access control for Ataker-boop Planner.
 
 Levels (по возрастанию опасности):
-  L1_POISONS   (🟢 ЯДЫ)         — всегда открыт, если нет kill
-  L2_CHIMERA   (🟡 ХИМЕРА)      — синтез гибридов, TOTP
-  L3_CODEBREAK (🔴 КОДЫ ВЗЛОМА) — code-gen + ingestion, TOTP
-  L4_AGENTS    (⚫ АГЕНТЫ)      — автономный swarm, TOTP
-  L5_KILL      (🛑 KILL SWITCH) — полная блокировка, статичный пароль
+  L1_POISONS   (🟢 ЯДЫ)         — обычные яды, TOTP (Google Authenticator)
+  L2_CHIMERA   (🟡 ХИМЕРА)      — яды + промпты / гибриды, TOTP
+  L3_CODEBREAK (🔴 КОДЫ ВЗЛОМА) — сложнее / code-gen + ingestion, TOTP
+  L4_AGENTS    (⚫ АГЕНТЫ)      — хакерский / автономный swarm, TOTP
+  L5_KILL      (🛑 KILL SWITCH) — полная блокировка, ОДИН статичный пароль оператора
 
-Последовательная разблокировка: L3 требует L2, L4 требует L3.
-L5 — исключение: доступен всегда, только блокирует (Fail-Safe Paradox).
+L1–L4 разблокируются кодом Authenticator. Последовательность: L2←L1, L3←L2, L4←L3.
+L5 — исключение: один пароль (придумывает оператор), только блокирует (Fail-Safe Paradox).
 """
 from __future__ import annotations
 
@@ -39,13 +39,14 @@ class CapabilityLevel(IntEnum):
     L4_AGENTS = 4
     L5_KILL = 5
 
-    #: Уровни которые разблокируются через TOTP (не L1, не L5).
+    #: Уровни которые разблокируются через TOTP (L1–L4; не L5).
     #: nonmember() marks this as a plain class attribute, not an enum member
     #: (required on Python 3.12+, otherwise the set value is passed to int()).
     UNLOCKABLE: Set["CapabilityLevel"] = nonmember(set())  # populated below
 
 
 CapabilityLevel.UNLOCKABLE = {
+    CapabilityLevel.L1_POISONS,
     CapabilityLevel.L2_CHIMERA,
     CapabilityLevel.L3_CODEBREAK,
     CapabilityLevel.L4_AGENTS,
@@ -54,15 +55,14 @@ CapabilityLevel.UNLOCKABLE = {
 
 @dataclass
 class PlannerCapabilities:
-    """Текущий уровень доступа Творца. L1 всегда открыт, остальные по коду."""
-    unlocked_levels: Set[CapabilityLevel] = field(
-        default_factory=lambda: {CapabilityLevel.L1_POISONS}
-    )
+    """Текущий уровень доступа Творца. L1–L4 только по TOTP; старт — всё закрыто."""
+
+    unlocked_levels: Set[CapabilityLevel] = field(default_factory=set)
     fully_locked: bool = False  # True когда активирован L5 kill switch
 
     @classmethod
     def locked(cls) -> "PlannerCapabilities":
-        """Только L1 открыт."""
+        """Ничего не открыто (нужен TOTP L1)."""
         return cls()
 
     def has(self, level: CapabilityLevel) -> bool:
@@ -72,9 +72,6 @@ class PlannerCapabilities:
         if level == CapabilityLevel.L5_KILL:
             return True  # kill доступен всегда (для остановки)
         return all(l in self.unlocked_levels for l in CapabilityLevel if 1 <= l <= level)
-
-
-
 
     def unlock(self, level: CapabilityLevel, code: str, auth: "AuthManager") -> bool:
         if level == CapabilityLevel.L5_KILL:
@@ -88,7 +85,7 @@ class PlannerCapabilities:
             return False
         if not auth.verify_totp(level, code):
             return False
-        if level > CapabilityLevel.L2_CHIMERA:
+        if level > CapabilityLevel.L1_POISONS:
             required = CapabilityLevel(level - 1)
             if required not in self.unlocked_levels:
                 return False
@@ -103,14 +100,14 @@ class PlannerCapabilities:
         if not auth.verify_kill_password(password):
             return False
         self.fully_locked = False
-        self.unlocked_levels = {CapabilityLevel.L1_POISONS}
+        self.unlocked_levels = set()  # снова нужен TOTP L1
         return True
-
 
 
 PathLike = Union[str, Path]
 
 _TOTP_FILES = {
+    CapabilityLevel.L1_POISONS: "totp_l1",
     CapabilityLevel.L2_CHIMERA: "totp_l2",
     CapabilityLevel.L3_CODEBREAK: "totp_l3",
     CapabilityLevel.L4_AGENTS: "totp_l4",
