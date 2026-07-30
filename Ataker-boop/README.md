@@ -23,7 +23,7 @@ Ataker-boop/
 - **Физическая изоляция**: атакующий работает на MacBook Air, отдельно от защиты (Mac Studio)
 - **Blind testing**: защита НЕ видит vault атак заранее
 - **Fail-open для атакующего**: если атака обошла защиту — это результат, не ошибка
-- **Модель**: **Dolphin3-Cyber-8B** Q4_K_M (attacker/judge на Air; см. [`MODELS.md`](./MODELS.md))
+- **Модели (готовка → потом бой):** Planner **Dolphin3-Cyber-8B** Q4_K_M + Executor **Llama-3.2-3B-abliterated** Q4_K_M (см. [`MODELS.md`](./MODELS.md))
 
 ## Использование
 

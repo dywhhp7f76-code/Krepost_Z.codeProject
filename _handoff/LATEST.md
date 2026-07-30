@@ -9,15 +9,23 @@
 
 ---
 
+- docs(ataker): **готовка до боя** — два слота на Air: Planner Dolphin3-Cyber-8B
+  Q4_K_M + Executor Llama-3.2-3B-abliterated Q4_K_M; `download_ataker_models_air.sh`,
+  `env.sh.example` (`ATAKER_PLANNER_MODEL` / `ATAKER_EXECUTOR_MODEL`); MODELS
+  чеклист A→D (smoke только после готовки).
+- Коммит: (этот PR / dual-prep)
+- Проверка: `bash scripts/download_ataker_models_air.sh --dry-run` → exit 0.
+
+---
+
 - docs(ataker): канон attacker/judge = **Dolphin3-Cyber-8B Q4_K_M**
   (`RavichandranJ/Dolphin3-Cyber-8B-GGUF`); пути AtakerDirty; env
   `ATAKER_JUDGE_*`; скрипты `scripts/download_dolphin_air.sh`,
   `scripts/smoke_ataker_judge_air.sh`; MODELS/README/Инструкция §10 /
   SANDBOX_ZOO_AIR. Мутаций 17 (вкл. `icl_reorder`). Скачивание GGUF и
   JUDGE-smoke — на Air у оператора (Cloud SSD не пишет).
-- Коммит: (этот PR)
-- Проверка: `bash scripts/download_dolphin_air.sh --dry-run` (без тома →
-  exit 1 ожидаемо); docs mention dolphin + Q4_K_M.
+- Коммит: 7414bfa (PR #12)
+- Проверка: `download_dolphin_air.sh --dry-run`; smoke без :8010 → exit 1.
 
 ---
 
