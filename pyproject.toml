@@ -25,6 +25,7 @@ presidio = [
 api = [
     "fastapi >= 0.110",
     "uvicorn >= 0.27",
+    "python-multipart",
 ]
 ollama = [
     "ollama >= 0.3",
