@@ -59,6 +59,14 @@ class TableMode(str, Enum):
     DebriefMode = "DebriefMode"
 
 
+class NoteChannel(str, Enum):
+    private = "private"
+
+
+class RoundReceiptSource(str, Enum):
+    system = "system"
+
+
 class AttackReceipt(BaseModel):
     attack_id: str = Field(..., min_length=8, max_length=64)
     attack_class: AttackClass
@@ -89,3 +97,72 @@ class MaskedUtterance(BaseModel):
     cites: List[str] = Field(default_factory=list)
     ts: datetime = Field(default_factory=_utcnow)
     redaction_flags: List[str] = Field(default_factory=list)
+
+
+class PrivateNote(BaseModel):
+    """Operator-only agent narrative — untrusted; compare to RoundReceipt."""
+
+    round_id: str = Field(..., min_length=4, max_length=64)
+    speaker: Speaker
+    body: str = Field(..., min_length=1, max_length=4000)
+    channel: NoteChannel = NoteChannel.private
+    ts: datetime = Field(default_factory=_utcnow)
+
+
+class RoundFragment(BaseModel):
+    """Depersonalized round slice for Round Table (role hidden, event retained)."""
+
+    round_id: str = Field(..., min_length=4, max_length=64)
+    attack_class: AttackClass
+    outcome: DefenseOutcome
+    safe: Optional[SafeLevel] = None
+    ts: datetime = Field(default_factory=_utcnow)
+
+
+class RoundReceipt(BaseModel):
+    """Machine anchor for a round — written by orchestrator, not agents."""
+
+    round_id: str = Field(..., min_length=4, max_length=64)
+    source: RoundReceiptSource = RoundReceiptSource.system
+    attack: AttackReceipt
+    defense: DefenseReceipt
+    input_fingerprint: str = Field(..., min_length=8, max_length=128)
+    judge_instability_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    judge_verdicts: List[str] = Field(default_factory=list)
+    latency_ms: float = Field(default=0.0, ge=0.0)
+    blindness_tier: int = Field(default=0, ge=0, le=1)
+    ts: datetime = Field(default_factory=_utcnow)
+
+    @field_validator("source")
+    @classmethod
+    def _must_be_system(cls, v: RoundReceiptSource) -> RoundReceiptSource:
+        if v != RoundReceiptSource.system:
+            raise ValueError("RoundReceipt.source must be system")
+        return v
+
+
+class RoundMetrics(BaseModel):
+    """Growth metrics — one row per round in metrics.jsonl."""
+
+    round_id: str
+    note_receipt_gap_ataker: Optional[float] = None
+    note_receipt_gap_krepost: Optional[float] = None
+    hypothesis_accuracy: float = 0.0
+    instability_rate: float = 0.0
+    pause_recommended: bool = False
+    ts: datetime = Field(default_factory=_utcnow)
+
+
+class SummarizerInput(BaseModel):
+    """All three sources required — receipt is anchor, not optional."""
+
+    round_receipt: RoundReceipt
+    private_notes: List[PrivateNote] = Field(default_factory=list)
+    public_feed: List[MaskedUtterance] = Field(default_factory=list)
+
+
+class SummarizerOutput(BaseModel):
+    round_id: str
+    markdown: str
+    metrics: RoundMetrics
+    next_step: str = "Твой следующий шаг: [ ]"

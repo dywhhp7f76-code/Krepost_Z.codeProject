@@ -893,6 +893,24 @@
 
 ---
 
+## 🔄 adversarial loop — Round Table + DebriefSummarizer
+
+### DebriefSummarizer (receipt anchor)  ✅ scaffold
+- **✅ Канон (2026-07-30):** `_handoff/DEBRIEF_SUMMARIZER_SPEC.md` LOCKED.
+  Receipt обязателен (fail-closed). PrivateNote = untrusted. Gap note↔receipt
+  считает код, не LLM. Три метрики: gap / hypothesis_accuracy / instability.
+- **✅ Код:** `krepost/roundtable/summarizer.py`, `gap.py`, схемы
+  `RoundReceipt` / `PrivateNote` / `RoundFragment`; Probnoki #61.
+- **🔜 Wire:** SealedRedLoop → receipts → утренний Round Table → Summarizer → Markdown оператору.
+- **🔜 LLM-диалог на столе** (analyzer + defender prompts).
+- **⏸ DebriefProvocateor** — RAG боевых паттернов, не теория.
+
+### RAG ingest gate («модель знает?»)  ⏳
+- Фильтр: private / fresh / narrow / critical-only. Probe main model before ingest.
+- База атacks: **только** `receipt_facts_for_vault()` — не narrative агентов.
+
+---
+
 ## ✅ Сделано (сессия 2026-07-10/12)
 
 > Кодирование тривиальных техник из разведданных. Пробники #40-#46.

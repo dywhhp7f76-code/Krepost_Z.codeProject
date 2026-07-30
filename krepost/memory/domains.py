@@ -134,6 +134,26 @@ DEFAULT_DOMAINS: Tuple[DomainSpec, ...] = (
 _DOMAIN_BY_FOLDER = {d.folder: d.id for d in DEFAULT_DOMAINS}
 FALLBACK_DOMAIN = "13-other"
 
+# Obsidian / внешние имена → каноническая папка/id Крепости
+FOLDER_ALIASES: dict[str, str] = {
+    "00_System": "00-System",
+    "00-system": "00-System",
+    "05_Knowledge": "05_Knowledge_Base",
+    "05-Knowledge": "05_Knowledge_Base",
+    "05-Knowledge_Base": "05_Knowledge_Base",
+    "05_knowledge_base": "05_Knowledge_Base",
+}
+
+
+def normalize_folder(top: str) -> str:
+    """Алиас или каноническое имя верхней папки."""
+    t = (top or "").strip()
+    if not t:
+        return t
+    if t in _DOMAIN_BY_FOLDER:
+        return t
+    return FOLDER_ALIASES.get(t, t)
+
 
 def domain_from_relpath(rel: str) -> str:
     """Верхняя папка vault → domain id. Неизвестное → FALLBACK_DOMAIN."""
@@ -142,7 +162,27 @@ def domain_from_relpath(rel: str) -> str:
     top = rel.replace("\\", "/").split("/", 1)[0].strip()
     if not top or top == "00-INDEX.md":
         return FALLBACK_DOMAIN
+    top = normalize_folder(top)
     return _DOMAIN_BY_FOLDER.get(top, FALLBACK_DOMAIN)
+
+
+def folder_domain_map(
+    domains: Sequence[DomainSpec] | None = None,
+) -> List[dict]:
+    """Таблица folder → domain_id (+ алиасы) для Obsidian/скриптов."""
+    specs = list(domains if domains is not None else DEFAULT_DOMAINS)
+    rows: List[dict] = []
+    for d in specs:
+        aliases = sorted(a for a, canon in FOLDER_ALIASES.items() if canon == d.folder)
+        rows.append(
+            {
+                "folder": d.folder,
+                "domain_id": d.id,
+                "aliases": aliases,
+                "labels": list(d.labels),
+            }
+        )
+    return rows
 
 
 def domains_by_id(domains: Sequence[DomainSpec] | None = None) -> dict[str, DomainSpec]:

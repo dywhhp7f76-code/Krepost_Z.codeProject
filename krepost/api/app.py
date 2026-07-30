@@ -21,10 +21,10 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -33,6 +33,13 @@ _CHAT_HTML = _STATIC_DIR / "chat.html"
 from krepost.api.alerts import AlertDispatcher, format_prometheus_metrics
 from krepost.api.auth import AuthGate
 from krepost.api.ingest_personal import ingest_metadata, write_personal_note
+from krepost.api.openai_compat import (
+    chat_completion_payload,
+    extract_user_text,
+    list_models,
+    resolve_mode,
+    stream_chunks,
+)
 from krepost.orchestration.orchestrator import Orchestrator, OrchestrationResult
 from krepost.orchestration.tools import AgentResult, ToolAgent
 
@@ -91,6 +98,22 @@ class IngestJsonRequest(BaseModel):
     filename: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1, max_length=2_000_000)
     private: bool = True
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: Any = ""
+
+
+class ChatCompletionsRequest(BaseModel):
+    """OpenAI-compatible body (AnythingLLM Generic OpenAI)."""
+
+    model: str = "krepost"
+    messages: List[ChatMessage] = Field(default_factory=list)
+    stream: bool = False
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    user: Optional[str] = None
 
 
 def _to_response(r: OrchestrationResult) -> QueryResponse:
@@ -246,6 +269,11 @@ def create_app(
             "chat": "/chat",
             "auth_required": gate.enabled,
             "private_chat": "tools/KrepostChat",
+            "openai": {
+                "models": "/v1/models",
+                "chat_completions": "/v1/chat/completions",
+                "note": "AnythingLLM → Generic OpenAI → http://HOST:8000/v1",
+            },
         }
 
     @app.post("/v1/login", response_model=LoginResponse)
@@ -308,7 +336,7 @@ def create_app(
             result = await agent.run(req.text, req.session_id)
             return _agent_to_response(result)
 
-    async def _do_ingest(filename: str, content: str, private: bool) -> JSONResponse:
+async def _do_ingest(filename: str, content: str, private: bool) -> JSONResponse:
         if not content.strip():
             return JSONResponse(status_code=400, content={"detail": "empty_content"})
         try:
@@ -377,5 +405,71 @@ def create_app(
 
     except Exception as e:  # pragma: no cover
         logger.warning(f"/v1/ingest/upload disabled: {e}")
+
+    @app.get("/v1/models")
+    async def openai_models():
+        return list_models(agent_enabled=agent is not None)
+
+    @app.post("/v1/chat/completions")
+    async def openai_chat_completions(req: ChatCompletionsRequest, request: Request):
+        """AnythingLLM / OpenAI clients → полный пайплайн Крепости (не голый LM Studio)."""
+        text = extract_user_text([m.model_dump() for m in req.messages])
+        if not text:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "message": "no user message content",
+                        "type": "invalid_request_error",
+                    }
+                },
+            )
+
+        mode, use_memory = resolve_mode(req.model)
+        # Optional overrides from AnythingLLM custom headers
+        hdr_mem = request.headers.get("x-krepost-use-memory")
+        if hdr_mem is not None:
+            use_memory = hdr_mem.strip().lower() in ("1", "true", "yes", "on")
+        hdr_mode = (request.headers.get("x-krepost-mode") or "").strip().lower()
+        if hdr_mode in ("agent", "query"):
+            mode = hdr_mode
+
+        session_id = (
+            request.headers.get("x-krepost-session")
+            or req.user
+            or f"openai-{request.client.host if request.client else 'local'}"
+        )[:200]
+
+        if mode == "agent" and agent is not None:
+            result = await agent.run(text, session_id)
+            content = result.output
+            status, verdict = result.status, result.verdict
+        else:
+            if mode == "agent" and agent is None:
+                # fallback to query+memory if agent not wired
+                use_memory = True
+            result = await orchestrator.handle(
+                text, session_id, use_memory=use_memory
+            )
+            content = result.output
+            status, verdict = result.status, result.verdict
+
+        model_out = req.model or "krepost"
+        if req.stream:
+            return StreamingResponse(
+                iter(stream_chunks(content, model_out)),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Krepost-Verdict": verdict},
+            )
+        payload = chat_completion_payload(
+            content=content,
+            model=model_out,
+            verdict=verdict,
+            status=status,
+        )
+        return JSONResponse(
+            payload,
+            headers={"X-Krepost-Verdict": verdict, "X-Krepost-Status": status},
+        )
 
     return app
