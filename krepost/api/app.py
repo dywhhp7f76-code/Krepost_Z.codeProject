@@ -13,22 +13,33 @@ HTTP-обвязка поверх Orchestrator — точка входа серв
 - bind на localhost делается в server.py (принцип локальности §5.1);
 - лимит размера тела (413) + max_length на поля (422) — против раздувания;
 - rate limiting уже в пайплайне (SessionRateLimiter);
-- необработанные исключения → generic 500 без утечки стека (паттерн SEC-004).
+- необработанные исключения → generic 500 без утечки стека (паттерн SEC-004);
+- операторский пароль (KREPOST_OPERATOR_PASSWORD) → Bearer-сессия для чата.
 """
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _CHAT_HTML = _STATIC_DIR / "chat.html"
 
 from krepost.api.alerts import AlertDispatcher, format_prometheus_metrics
+from krepost.api.auth import AuthGate
+from krepost.api.ingest_personal import ingest_metadata, write_personal_note
+from krepost.api.openai_compat import (
+    chat_completion_payload,
+    extract_user_text,
+    list_models,
+    resolve_mode,
+    stream_chunks,
+)
 from krepost.orchestration.orchestrator import Orchestrator, OrchestrationResult
 from krepost.orchestration.tools import AgentResult, ToolAgent
 
@@ -41,13 +52,13 @@ except ImportError:  # pragma: no cover
 
 
 API_VERSION = "0.1.0"
-MAX_BODY_BYTES = 256 * 1024  # 256 KB — тело запроса; текст отдельно ограничен полем
+MAX_BODY_BYTES = 256 * 1024  # 256 KB — обычные запросы
+MAX_INGEST_BYTES = 8 * 1024 * 1024  # 8 MB — личные загрузки
 
 
 class QueryRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=32000)
     session_id: str = Field(..., min_length=1, max_length=200)
-    # False = быстрый чат (без RAG / HierarchicalDomainRAG). По умолчанию полный бой.
     use_memory: bool = True
 
 
@@ -70,6 +81,39 @@ class AgentResponse(BaseModel):
     iterations: int = 0
     audit_hash: Optional[str] = None
     diagnostics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LoginRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=500)
+    totp: str = Field(default="", max_length=16)  # позже
+
+
+class LoginResponse(BaseModel):
+    token: str
+    expires_at: float
+    auth: str = "password"
+
+
+class IngestJsonRequest(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=200)
+    content: str = Field(..., min_length=1, max_length=2_000_000)
+    private: bool = True
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: Any = ""
+
+
+class ChatCompletionsRequest(BaseModel):
+    """OpenAI-compatible body (AnythingLLM Generic OpenAI)."""
+
+    model: str = "krepost"
+    messages: List[ChatMessage] = Field(default_factory=list)
+    stream: bool = False
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    user: Optional[str] = None
 
 
 def _to_response(r: OrchestrationResult) -> QueryResponse:
@@ -114,11 +158,26 @@ def create_app(
     agent: ToolAgent | None = None,
     title: str = "Krepost API",
     alert_dispatcher: AlertDispatcher | None = None,
+    auth_gate: AuthGate | None = None,
+    vault_root: Path | None = None,
 ) -> FastAPI:
+    gate = auth_gate if auth_gate is not None else AuthGate.from_env()
+    vault = Path(
+        vault_root
+        if vault_root is not None
+        else os.environ.get("KREPOST_VAULT", "vault")
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        if gate.enabled and not gate.configured:
+            logger.error(
+                "KREPOST_REQUIRE_AUTH=1 но KREPOST_OPERATOR_PASSWORD пуст — "
+                "все защищённые маршруты вернут 503"
+            )
+        elif gate.enabled:
+            logger.info("Operator auth ON — Bearer token required for chat/API")
         yield
-        # Корректное закрытие пайплайна при остановке сервиса.
         try:
             await orchestrator.pipeline.close()
         except Exception as e:  # pragma: no cover
@@ -131,6 +190,8 @@ def create_app(
 
     app = FastAPI(title=title, version=API_VERSION, lifespan=lifespan)
     alerts = alert_dispatcher or AlertDispatcher()
+    app.state.auth_gate = gate
+    app.state.vault_root = vault
 
     def _metrics_snapshot() -> Dict[str, Any]:
         pipe = orchestrator.pipeline
@@ -141,24 +202,60 @@ def create_app(
             redactions = snap.get("pii_redactions", 0) + snap.get("secret_redactions", 0)
             snap["pii_filter_healthy"] = bool(total == 0 or redactions > 0)
             snap["agent_enabled"] = agent is not None
+            snap["auth_enabled"] = gate.enabled
         return snap
 
+    def _unauthorized():
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "unauthorized", "hint": "POST /v1/login"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    def _auth_not_configured():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "auth_not_configured",
+                "hint": "Set KREPOST_OPERATOR_PASSWORD",
+            },
+        )
+
     @app.middleware("http")
-    async def limit_body(request: Request, call_next):
+    async def security_middleware(request: Request, call_next):
+        path = request.url.path
+        method = request.method
+
+        # Body size
         cl = request.headers.get("content-length")
+        limit = MAX_INGEST_BYTES if path.startswith("/v1/ingest") else MAX_BODY_BYTES
         if cl is not None:
             try:
-                if int(cl) > MAX_BODY_BYTES:
-                    return JSONResponse(status_code=413, content={"detail": "payload_too_large"})
+                if int(cl) > limit:
+                    return JSONResponse(
+                        status_code=413, content={"detail": "payload_too_large"}
+                    )
             except ValueError:
-                return JSONResponse(status_code=400, content={"detail": "bad_content_length"})
+                return JSONResponse(
+                    status_code=400, content={"detail": "bad_content_length"}
+                )
+
+        # Auth
+        if gate.needs_auth(path, method):
+            if not gate.configured:
+                return _auth_not_configured()
+            token = gate.extract_bearer(request.headers.get("authorization"))
+            if not gate.valid_token(token):
+                return _unauthorized()
+
         return await call_next(request)
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception):
-        # Не отдаём стек/детали наружу — только generic-ошибка.
         logger.error(f"unhandled API error: {type(exc).__name__}: {exc}")
-        return JSONResponse(status_code=500, content={"status": "error", "detail": "internal_error"})
+        return JSONResponse(
+            status_code=500, content={"status": "error", "detail": "internal_error"}
+        )
 
     @app.get("/health")
     async def health():
@@ -170,12 +267,41 @@ def create_app(
                 [t["name"] for t in agent.registry.specs()] if agent is not None else []
             ),
             "chat": "/chat",
+            "auth_required": gate.enabled,
+            "private_chat": "tools/KrepostChat",
+            "openai": {
+                "models": "/v1/models",
+                "chat_completions": "/v1/chat/completions",
+                "note": "AnythingLLM → Generic OpenAI → http://HOST:8000/v1",
+            },
         }
+
+    @app.post("/v1/login", response_model=LoginResponse)
+    async def login(req: LoginRequest):
+        if not gate.configured:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "auth_not_configured",
+                    "hint": "Set KREPOST_OPERATOR_PASSWORD on Studio",
+                },
+            )
+        if not gate.verify_password(req.password, req.totp):
+            return JSONResponse(status_code=401, content={"detail": "bad_credentials"})
+        sess = gate.issue_token()
+        return LoginResponse(token=sess.token, expires_at=sess.expires_at)
+
+    @app.post("/v1/logout")
+    async def logout(request: Request):
+        token = gate.extract_bearer(request.headers.get("authorization"))
+        if token:
+            gate.revoke(token)
+        return {"status": "ok"}
 
     @app.get("/")
     @app.get("/chat")
     async def chat_ui():
-        """Удобный чат оператора с Крепостью (тот же origin, что /v1/query)."""
+        """Браузерный чат (тот же origin). При auth — нужен Bearer (программа KrepostChat удобнее)."""
         if not _CHAT_HTML.is_file():
             return PlainTextResponse("chat UI missing", status_code=404)
         return FileResponse(
@@ -204,9 +330,146 @@ def create_app(
         return _to_response(result)
 
     if agent is not None:
+
         @app.post("/v1/agent", response_model=AgentResponse)
         async def agent_query(req: QueryRequest):
             result = await agent.run(req.text, req.session_id)
             return _agent_to_response(result)
+
+    async def _do_ingest(filename: str, content: str, private: bool) -> JSONResponse:
+        if not content.strip():
+            return JSONResponse(status_code=400, content={"detail": "empty_content"})
+        try:
+            path, doc_id = write_personal_note(
+                vault, filename, content, private=private
+            )
+        except Exception as e:
+            logger.error(f"ingest write failed: {e}")
+            return JSONResponse(status_code=500, content={"detail": "write_failed"})
+
+        added = 0
+        blocked = False
+        reason = ""
+        store = getattr(orchestrator, "memory_store", None)
+        if store is not None:
+            try:
+                result = await store.add(
+                    doc_id, content, metadata=ingest_metadata(private=private)
+                )
+                added = int(getattr(result, "added", 0) or 0)
+                blocked = bool(getattr(result, "blocked", False))
+                if getattr(result, "reason", None):
+                    reason = str(result.reason)
+            except Exception as e:
+                logger.warning(f"memory ingest failed (file saved): {e}")
+                reason = f"file_saved_memory_error:{type(e).__name__}"
+
+        return JSONResponse(
+            {
+                "status": "ok" if not blocked else "blocked",
+                "doc_id": doc_id,
+                "path": str(path),
+                "chunks": added,
+                "blocked": blocked,
+                "reason": reason,
+                "private": private,
+            }
+        )
+
+    @app.post("/v1/ingest")
+    async def ingest_json(req: IngestJsonRequest):
+        return await _do_ingest(req.filename, req.content, req.private)
+
+    # Multipart optional (python-multipart). GUI uses JSON /v1/ingest.
+    try:
+        from fastapi import File, Form, UploadFile  # noqa: F811
+
+        @app.post("/v1/ingest/upload")
+        async def ingest_upload(
+            file: UploadFile = File(...),
+            private: bool = Form(True),
+        ):
+            raw = await file.read()
+            if len(raw) > MAX_INGEST_BYTES:
+                return JSONResponse(
+                    status_code=413, content={"detail": "payload_too_large"}
+                )
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                return JSONResponse(
+                    status_code=400, content={"detail": "utf8_text_only"}
+                )
+            name = file.filename or "upload.md"
+            return await _do_ingest(name, text, private)
+
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"/v1/ingest/upload disabled: {e}")
+
+    @app.get("/v1/models")
+    async def openai_models():
+        return list_models(agent_enabled=agent is not None)
+
+    @app.post("/v1/chat/completions")
+    async def openai_chat_completions(req: ChatCompletionsRequest, request: Request):
+        """AnythingLLM / OpenAI clients → полный пайплайн Крепости (не голый LM Studio)."""
+        text = extract_user_text([m.model_dump() for m in req.messages])
+        if not text:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "message": "no user message content",
+                        "type": "invalid_request_error",
+                    }
+                },
+            )
+
+        mode, use_memory = resolve_mode(req.model)
+        # Optional overrides from AnythingLLM custom headers
+        hdr_mem = request.headers.get("x-krepost-use-memory")
+        if hdr_mem is not None:
+            use_memory = hdr_mem.strip().lower() in ("1", "true", "yes", "on")
+        hdr_mode = (request.headers.get("x-krepost-mode") or "").strip().lower()
+        if hdr_mode in ("agent", "query"):
+            mode = hdr_mode
+
+        session_id = (
+            request.headers.get("x-krepost-session")
+            or req.user
+            or f"openai-{request.client.host if request.client else 'local'}"
+        )[:200]
+
+        if mode == "agent" and agent is not None:
+            result = await agent.run(text, session_id)
+            content = result.output
+            status, verdict = result.status, result.verdict
+        else:
+            if mode == "agent" and agent is None:
+                # fallback to query+memory if agent not wired
+                use_memory = True
+            result = await orchestrator.handle(
+                text, session_id, use_memory=use_memory
+            )
+            content = result.output
+            status, verdict = result.status, result.verdict
+
+        model_out = req.model or "krepost"
+        if req.stream:
+            return StreamingResponse(
+                iter(stream_chunks(content, model_out)),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Krepost-Verdict": verdict},
+            )
+        payload = chat_completion_payload(
+            content=content,
+            model=model_out,
+            verdict=verdict,
+            status=status,
+        )
+        return JSONResponse(
+            payload,
+            headers={"X-Krepost-Verdict": verdict, "X-Krepost-Status": status},
+        )
 
     return app

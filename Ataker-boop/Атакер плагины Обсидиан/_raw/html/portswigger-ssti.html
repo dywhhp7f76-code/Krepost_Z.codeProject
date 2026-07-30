@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Server-side template injection | Web Security Academy</title>
+    <meta content="This technique was first documented by PortSwigger Research in the conference presentation Server-Side Template Injection: RCE for the Modern Web App. In ..." name="description">
+    <!-- Twitter data -->
+
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="">
+<meta name="twitter:image" content="https://portswigger.net/content/images/logos/academy-twittercard.png">
+    <meta name="twitter:site" content="@WebSecAcademy">
+
+<!-- Open Graph data -->
+<meta property="og:title" content=""/>
+<meta property="og:url" content="https://portswigger.net"/>
+<meta property="og:image" content="https://portswigger.net/content/images/logos/academy-twittercard.png"/>
+<meta property="og:type" content="website"/>
+<link rel="canonical" href="https://portswigger.net/web-security/server-side-template-injection"/>
+<link rel="icon" href="/content/images/logos/favicon.ico" type="image/x-icon"/>
+<link rel="apple-touch-icon" href="/content/images/logos/apple-touch-icon.png">
+    <link href="/content/pswebsecacademy.css" rel="stylesheet" type="text/css">
+    <link rel="preload" href="/content/fonts/ps-icons-small/ps-icons-small.woff?td2uot" as="font" crossorigin="anonymous">
+<link rel="preload" href="/content/fonts/ps-main/ps-icons.woff?l1la2n" as="font" crossorigin="anonymous">
+    
+
+<script nonce="+FgJ5T+I4//fsHsvIa/MUJUOUGY+Q8di">
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Dr qr Ci Br Zr Pr capture calculateEventProperties Ur register register_once register_for_session unregister unregister_for_session Xr getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Jr identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty Gr Hr createPersonProfile setInternalOrTestUser Wr Fr tn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing $r debug ki Yr getPageViewId captureTraceFeedback captureTraceMetric Rr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_zmnmWxifkm9THV54Mrn2XvFDL3Tq497pyRgrYbDu5PGW', {
+        api_host: 'https://phingest.portswigger.com',
+        defaults: '2026-01-30',
+        person_profiles: 'identified_only',
+    })
+</script>
+
+</head>
+<body class="theme-">
+
+
+<script nonce="+FgJ5T+I4//fsHsvIa/MUJUOUGY+Q8di">
+    (function (window, document, dataLayerName, id) {
+        window[dataLayerName] = window[dataLayerName] || [], window[dataLayerName].push({
+            start: (new Date).getTime(),
+            event: "stg.start"
+        });
+        var scripts = document.getElementsByTagName('script')[0], tags = document.createElement('script');
+        var qP = [];
+        dataLayerName !== "dataLayer" && qP.push("data_layer_name=" + dataLayerName), tags.nonce = "+FgJ5T+I4//fsHsvIa/MUJUOUGY+Q8di";
+        var qPString = qP.length > 0 ? ("?" + qP.join("&")) : "";
+        tags.async = !0, tags.src = "https://ps.containers.piwik.pro/" + id + ".js" + qPString,
+            scripts.parentNode.insertBefore(tags, scripts);
+        !function (a, n, i) {
+            a[n] = a[n] || {};
+            for (var c = 0; c < i.length; c++) !function (i) {
+                a[n][i] = a[n][i] || {}, a[n][i].api = a[n][i].api || function () {
+                    var a = [].slice.call(arguments, 0);
+                    "string" == typeof a[0] && window[dataLayerName].push({
+                        event: n + "." + i + ":" + a[0],
+                        parameters: [].slice.call(arguments, 1)
+                    })
+                }
+            }(i[c])
+        }(window, "ppms", ["tm", "cm"]);
+    })(window, document, 'dataLayer', '287552c2-4917-42e0-8982-ba994a2a73d7');
+</script>
+
+
+
+<header class="page-header" id="top">
+    <div class="container">
+    <a class="logo" href="/"></a>
+    <div class="header-right">
+        <div class="login-buttons">
+            <a class="button-orange-small" href="/users/youraccount/personaldetails">My account</a>
+        </div>
+        
+
+    <input type="checkbox" id="hamburger-mobile" class="hamburger-input-mobile">
+    <input type="radio" id="hamburger-desktop" class="hamburger-input-desktop" name="mega-nav-input">
+    <div class="hamburger-menu-mobile">
+        <label class="hamburger-menu-label header-hidden" for="hamburger-mobile">
+            <span class="hamburger-layers"></span>
+        </label>
+    </div>
+    <div class="mega-nav">
+        <input type="radio" id="mega-nav-close" class="mega-nav-input-close" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-1" class="mega-nav-input-1" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-2" class="mega-nav-input-2" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-6" class="mega-nav-input-6" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-7" class="mega-nav-input-7" name="mega-nav-input">
+
+        <label for="mega-nav-close" class="mega-nav-close"></label>
+
+        <label class="mega-nav-label mega-nav-label-1" for="mega-nav-label-1">
+            <span class="mega-nav-text">Products</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <label class="mega-nav-label mega-nav-label-2" for="mega-nav-label-2">
+            <span class="mega-nav-text">Solutions</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <a class="mega-nav-link" href="/research"><span class="mega-nav-text">Research</span></a>
+        <a class="mega-nav-link" href="/web-security"><span class="mega-nav-text">Academy</span></a>
+        <label class="mega-nav-label mega-nav-label-6" for="mega-nav-label-6">
+            <span class="mega-nav-text">Support</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+
+        <label class="mega-nav-label mega-nav-label-7 header-hidden" for="mega-nav-label-7">
+            <span class="mega-nav-text">Company</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <div class="hamburger-menu-desktop">
+            <label class="hamburger-menu-label header-show" for="hamburger-desktop">
+                <span class="hamburger-layers"></span>
+            </label>
+            <div>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+            </div>
+        </div>
+
+        <a class="mega-nav-link header-hidden" href="/users/youraccount"><span class="mega-nav-text">My account</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+
+        <div class="mega-nav-container">
+
+            <div class="mega-nav-content mega-nav-content-1">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <a href="/burp/burp-at" class="link-block-white">
+                                <img src="/mega-nav/images/burp-at.svg" alt="Burp AT">
+                                <span><strong>Burp AT</strong></span>
+                                <span>Agentic AI that extends human-led pentesting.</span>
+                            </a>
+
+                            <a href="/burp/enterprise" class="link-block-white">
+                                <img src="/content/images/svg/icons/enterprise.svg" alt="Burp Suite DAST">
+                                <span><strong>Burp Suite DAST</strong></span>
+                                <span>The enterprise-enabled dynamic web vulnerability scanner.</span>
+                            </a>
+
+                            <a href="/burp/pro" class="link-block-white">
+                                <img src="/content/images/svg/icons/professional.svg" alt="Burp Suite Professional">
+                                <span><strong>Burp Suite Professional</strong></span>
+                                <span>The world's #1 web penetration testing toolkit.</span>
+                            </a>
+
+                            <a href="/burp/communitydownload" class="link-block-white">
+                                <img src="/content/images/svg/icons/community.svg" alt="Burp Suite Community Edition">
+                                <span><strong>Burp Suite Community Edition</strong></span>
+                                <span>The best manual tools to start web security testing.</span>
+                            </a>
+
+                            <a href="/burp" class="chevron-after">View all product editions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/vulnerability-scanner">
+                                    <p><strong>Burp Scanner</strong></p>
+                                    <p>Burp Suite's web vulnerability scanner</p>
+                                    <img src="/mega-nav/images/burp-suite-scanner.jpg" alt="Burp Suite's web vulnerability scanner'">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-2">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/solutions/attack-surface-visibility" class="link-block-white">
+                                    <span><strong>Attack surface visibility</strong></span>
+                                    <span>Improve security posture, prioritize manual testing, free up time.</span>
+                                </a>
+                                <a href="/solutions/ci-driven-scanning" class="link-block-white">
+                                    <span><strong>CI-driven scanning</strong></span>
+                                    <span>More proactive security - find and fix vulnerabilities earlier.</span>
+                                </a>
+                                <a href="/solutions" class="link-block-white">
+                                    <span><strong>Application security testing</strong></span>
+                                    <span>See how our software enables the world to secure the web.</span>
+                                </a>
+                                <a href="/solutions/devsecops" class="link-block-white">
+                                    <span><strong>DevSecOps</strong></span>
+                                    <span>Catch critical bugs; ship more secure software, more quickly.</span>
+                                </a>
+
+                                <a href="/solutions/penetration-testing" class="link-block-white">
+                                    <span><strong>Penetration testing</strong></span>
+                                    <span>Accelerate penetration testing - find more bugs, more quickly.</span>
+                                </a>
+                                <a href="/solutions/automated-security-testing" class="link-block-white">
+                                    <span><strong>Automated scanning</strong></span>
+                                    <span>Scale dynamic scanning. Reduce risk. Save time/money.</span>
+                                </a>
+
+                                <a href="/solutions/bug-bounty-hunting" class="link-block-white">
+                                    <span><strong>Bug bounty hunting</strong></span>
+                                    <span>Level up your hacking and earn more bug bounties.</span>
+                                </a>
+                                <a href="/solutions/compliance" class="link-block-white">
+                                    <span><strong>Compliance</strong></span>
+                                    <span>Enhance security monitoring to comply with confidence.</span>
+                                </a>
+                            </div>
+                            <a href="/solutions" class="chevron-after">View all solutions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/dast/resources/dast-vs-professional">
+                                    <p><strong>Product comparison</strong></p>
+                                    <p>What's the difference between Pro and DAST?</p>
+                                    <img src="/mega-nav/images/burp-suite.jpg" alt="Burp Suite Professional vs Burp Suite DAST">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-6">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/support" class="link-block-white">
+                                    <span><strong>Support Center</strong></span>
+                                    <span>Get help and advice from our experts on all things Burp.</span>
+                                </a>
+                                <a href="/burp/documentation" class="link-block-white">
+                                    <span><strong>Documentation</strong></span>
+                                    <span>Tutorials and guides for Burp Suite.</span>
+                                </a>
+                                <a href="/burp/documentation/desktop/getting-started" class="link-block-white">
+                                    <span><strong>Get Started - Professional</strong></span>
+                                    <span>Get started with Burp Suite Professional.</span>
+                                </a>
+                                <a href="/burp/documentation/dast/setup" class="link-block-white">
+                                    <span><strong>Get Started - DAST</strong></span>
+                                    <span>Get started with Burp Suite DAST.</span>
+                                </a>
+                                <a href="/burp/releases" class="link-block-white">
+                                    <span><strong>Downloads</strong></span>
+                                    <span>Download the latest version of Burp Suite.</span>
+                                </a>
+                            </div>
+                            <a href="/support" class="chevron-after">Visit the Support Center</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/releases">
+                                    <p><strong>Downloads</strong></p>
+                                    <p>Download the latest version of Burp Suite.</p>
+                                    <img src="/mega-nav/images/latest-burp-suite-software-download.jpg" alt="The latest version of Burp Suite software for download">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    </div>
+</div>
+</header>
+
+            <nav class="navigation-top">
+                <input type="checkbox" id="nav-main-enterprise">
+                <label for="nav-main-enterprise">
+                    <span>Academy home</span>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li><a href="https://portswigger.net/web-security/dashboard">Dashboard</a></li>
+                    <li><a href="https://portswigger.net/web-security/learning-paths">Learning paths</a></li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-topics">
+                        <label for="nav-main-academy-topics">
+                            <span>Latest topics</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="/web-security/request-smuggling">Request smuggling</a>
+                            <a href="/web-security/web-cache-deception">Web cache deception</a>
+                            <a href="/web-security/llm-attacks">Web LLM attacks</a>
+                            <a href="/web-security/api-testing">API testing</a>
+                            <a href="/web-security/nosql-injection">NoSQL injection</a>
+                            <a href="/web-security/all-topics">View all topics</a>
+                        </div>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-all-content">
+                        <label for="nav-main-academy-all-content">
+                            <span>All content</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="/web-security/all-labs">All labs</a>
+                            <a href="/web-security/all-topics">All topics</a>
+                            <a href="/web-security/mystery-lab-challenge">Mystery labs</a>
+                        </div>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-hall-of-fame">
+                        <label for="nav-main-academy-hall-of-fame">
+                            <span>Hall of Fame</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="https://portswigger.net/web-security/hall-of-fame">Leaderboard</a>
+                            <a href="https://portswigger.net/web-security/getting-started/kamil-vavra/index.html">Interview - Kamil Vavra</a>
+                            <a href="https://portswigger.net/web-security/getting-started/johnny-villarreal/index.html">Interview - Johnny Villarreal</a>
+                            <a href="https://portswigger.net/web-security/getting-started/andres-rauschecker/index.html">Interview - Andres Rauschecker</a>
+                        </div>
+                    </li>
+                    <li><a href="https://portswigger.net/web-security/getting-started/index.html">Get started</a></li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-certification">
+                        <label for="nav-main-academy-certification">
+                             <span>Get certified</span>
+                             <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                             <a href="https://portswigger.net/web-security/certification/index.html">Get certified</a>
+                             <a href="https://portswigger.net/web-security/certification/how-to-prepare/index.html">How to prepare</a>
+                             <a href="https://portswigger.net/web-security/certification/how-it-works/index.html">How it works</a>
+                             <a href="https://portswigger.net/web-security/certification/practice-exam/index.html">Practice exam</a>
+                             <a href="https://portswigger.net/web-security/certification/exam-hints-and-guidance/index.html">Exam hints and guidance</a>
+                             <a href="https://portswigger.net/web-security/certification/how-it-works/index.html#what-the-exam-involves">What the exam involves</a>
+                             <a href="https://portswigger.net/web-security/certification/frequently-asked-questions/index.html">FAQs</a>
+                             <a href="https://portswigger.net/web-security/certification#validate-your-certification">Validate your certification</a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+        
+<div class="wrapper-large">
+    <div class="container-academy">
+
+        <input class="nav-lhs-toggle-input" type="checkbox" id="nav-lhs-toggle">
+        <aside class="nav-lhs" id="tree-nav" tree-nav-version="35">
+            <nav class="nav-lhs-scrollable">
+                <label class="nav-lhs-toggle-label" for="nav-lhs-toggle"></label>
+                
+
+        <a class="nav-back" href="/web-security/all-topics">
+            <span class="icon-arrow-head-left"></span>
+            Back to all topics
+        </a>
+        <input type="checkbox" id="nav-main-id">
+        <label class="nav-label" for="nav-main-id">
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <h3>Server-side template injection</h3>
+        <ul>
+            <li><a href="/web-security/server-side-template-injection#what-is-server-side-template-injection">What is server-side template injection?</a></li>
+            <li><a href="/web-security/server-side-template-injection#what-is-the-impact-of-server-side-template-injection">Impact of server-side template injection</a></li>
+            <li><a href="/web-security/server-side-template-injection#how-do-server-side-template-injection-vulnerabilities-arise">How vulnerabilities arise</a></li>
+            <li>
+                <input type="checkbox" id="sub-nav-id-1">
+                <label for="sub-nav-id-1">
+                    <a href="/web-security/server-side-template-injection#constructing-a-server-side-template-injection-attack">Constructing an attack</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li><a href="/web-security/server-side-template-injection#detect">Detecting vulnerabilities</a></li>
+                    <li><a href="/web-security/server-side-template-injection#identify">Identifying the template engine</a></li>
+                    <li>
+                        <input type="checkbox" id="sub-nav-id-2">
+                        <label for="sub-nav-id-2">
+                            <a href="/web-security/server-side-template-injection/exploiting">Exploiting the vulnerability</a>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <ul>
+                            <li>
+                                <input type="checkbox" id="sub-nav-id-3">
+                                <label for="sub-nav-id-3">
+                                    <a href="/web-security/server-side-template-injection/exploiting#read">Read the documentation</a>
+                                    <span class="icon-arrow-head-down"></span>
+                                </label>
+                                <ul>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#learn-the-basic-template-syntax">Learn the basic template syntax</a></li>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#read-about-the-security-implications">Security documentation</a></li>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#look-for-known-exploits">Documented exploits</a></li>
+                                </ul>
+                            </li>
+                            <li>
+                                <input type="checkbox" id="sub-nav-id-4">
+                                <label for="sub-nav-id-4">
+                                    <a href="/web-security/server-side-template-injection/exploiting#explore">Explore the environment</a>
+                                    <span class="icon-arrow-head-down"></span>
+                                </label>
+                                <ul>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#developer-supplied-objects">Developer-supplied objects</a></li>
+                                </ul>
+                            </li>
+                            <li>
+                                <input type="checkbox" id="sub-nav-id-5">
+                                <label for="sub-nav-id-5">
+                                    <a href="/web-security/server-side-template-injection/exploiting#create-a-custom-attack">Create a custom attack</a>
+                                    <span class="icon-arrow-head-down"></span>
+                                </label>
+                                <ul>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#constructing-a-custom-exploit-using-an-object-chain">Using an object chain</a></li>
+                                    <li><a href="/web-security/server-side-template-injection/exploiting#constructing-a-custom-exploit-using-developer-supplied-objects">Using developer-supplied objects</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li><a href="/web-security/server-side-template-injection#how-to-prevent-server-side-template-injection-vulnerabilities">Preventing vulnerabilities</a></li>
+            <li><a href="/web-security/all-labs#server-side-template-injection">View all server-side template injection labs</a></li>
+        </ul>
+    
+            </nav>
+        </aside>
+        <main>
+            
+
+
+
+<ul class="breadcrumb-list" itemscope itemtype="http://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem"><a itemscope itemtype="http://schema.org/Thing" itemprop="item" href="/web-security"><span itemprop="name">Web Security Academy</span></a><meta itemprop="position" content="1" /></li><li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem"><a itemscope itemtype="http://schema.org/Thing" itemprop="item" href="/web-security/server-side-template-injection"><span itemprop="name">Server-side template injection</span></a><meta itemprop="position" content="2" /></li></ul>    <div class="section theme-white">
+
+        <h1 class="heading-2">Server-side template injection</h1><p>This technique was first documented by PortSwigger Research in the conference presentation <a href="https://portswigger.net/research/server-side-template-injection">Server-Side Template Injection: RCE for the Modern Web App</a>.</p><p>
+            In this section, we'll discuss what server-side template injection is and outline the basic methodology for exploiting server-side template injection vulnerabilities. We'll also suggest ways of making sure that your own use of templates doesn't expose you to server-side template injection.
+        </p><div class="highlightedarea">
+            <h4>Labs</h4>
+            <p>
+                If you're already familiar with the basic concepts behind server-side template injection vulnerabilities and just want to practice exploiting them on some realistic, deliberately vulnerable targets, you can access all of the labs in this topic from the link below.
+            </p>
+            
+        <ul><li><a href="/web-security/all-labs#server-side-template-injection">View all server-side template injection labs</a></li></ul></div><p>
+            This technique was first documented by PortSwigger in our 2015 research paper on the subject. If you're interested in how we were able to exploit some of these vulnerabilities on live websites, a full write-up is available on our research page.
+        </p><div class="highlightedarea">
+			<h4>Research</h4>
+			
+		<ul><li><a href="https://portswigger.net/research/server-side-template-injection">Server-side template injection</a></li></ul></div><h2 id="what-is-server-side-template-injection">What is server-side template injection?</h2><p>
+            Server-side template injection is when an attacker is able to use native template syntax to inject a malicious payload into a template, which is then executed server-side.
+        </p><p>
+            Template engines are designed to generate web pages by combining fixed templates with volatile data. Server-side template injection attacks can occur when user input is concatenated directly into a template, rather than passed in as data. This allows attackers to inject arbitrary template directives in order to manipulate the template engine, often enabling them to take complete control of the server. As the name suggests, server-side template injection payloads are delivered and evaluated server-side, potentially making them much more dangerous than a typical client-side template injection.
+        </p><h2 id="what-is-the-impact-of-server-side-template-injection">What is the impact of server-side template injection?</h2><p>
+            Server-side template injection vulnerabilities can expose websites to a variety of attacks depending on the template engine in question and how exactly the application uses it. In certain rare circumstances, these vulnerabilities pose no real security risk. However, most of the time, the impact of server-side template injection can be catastrophic.
+        </p><p>
+            At the severe end of the scale, an attacker can potentially achieve remote code execution, taking full control of the back-end server and using it to perform other attacks on internal infrastructure.
+        </p><p>
+            Even in cases where full remote code execution is not possible, an attacker can often still use server-side template injection as the basis for numerous other attacks, potentially gaining read access to sensitive data and arbitrary files on the server.
+        </p><h2 id="how-do-server-side-template-injection-vulnerabilities-arise">How do server-side template injection vulnerabilities arise?</h2><p>
+            Server-side template injection vulnerabilities arise when user input is concatenated into templates rather than being passed in as data.
+        </p><p>
+            Static templates that simply provide placeholders into which dynamic content is rendered are generally not vulnerable to server-side template injection. The classic example is an email that greets each user by their name, such as the following extract from a Twig template:
+        </p><code class="code-scrollable">$output = $twig-&gt;render(&quot;Dear {first_name},&quot;, array(&quot;first_name&quot; =&gt; $user.first_name) );</code><p>
+            This is not vulnerable to server-side template injection because the user's first name is merely passed into the template as data.
+        </p><p>
+            However, as templates are simply strings, web developers sometimes directly concatenate user input into templates prior to rendering. Let's take a similar example to the one above, but this time, users are able to customize parts of the email before it is sent. For example, they might be able to choose the name that is used:
+        </p><code class="code-scrollable">$output = $twig-&gt;render(&quot;Dear &quot; . $_GET['name']);</code><p>
+            In this example, instead of a static value being passed into the template, part of the template itself is being dynamically generated using the <code>GET</code> parameter <code>name</code>. As template syntax is evaluated server-side, this potentially allows an attacker to place a server-side template injection payload inside the <code>name</code> parameter as follows:
+        </p><code class="code-scrollable">http://vulnerable-website.com/?name={{bad-stuff-here}}</code><p>
+            Vulnerabilities like this are sometimes caused by accident due to poor template design by people unfamiliar with the security implications. Like in the example above, you may see different components, some of which contain user input, concatenated and embedded into a template. In some ways, this is similar to SQL injection vulnerabilities occurring in poorly written prepared statements.
+        </p><p>
+            However, sometimes this behavior is actually implemented intentionally. For example, some websites deliberately allow certain privileged users, such as content editors, to edit or submit custom templates by design. This clearly poses a huge security risk if an attacker is able to compromise an account with such privileges.
+        </p><h2 id="constructing-a-server-side-template-injection-attack">Constructing a server-side template injection attack</h2><p>
+            Identifying server-side template injection vulnerabilities and crafting a successful attack typically involves the following high-level process.
+        </p><img alt="Server-side template injection methodology" class="center-block" src="/web-security/images/ssti-methodology-diagram.png"><h3 id="detect">Detect</h3><p>
+            Server-side template injection vulnerabilities often go unnoticed not because they are complex but because they are only really apparent to auditors who are explicitly looking for them. If you are able to detect that a vulnerability is present, it can be surprisingly easy to exploit it. This is especially true in unsandboxed environments.
+        </p><p>
+            As with any vulnerability, the first step towards exploitation is being able to find it. Perhaps the simplest initial approach is to try fuzzing the template by injecting a sequence of special characters commonly used in template expressions, such as <code>${{&lt;%[%'&quot;}}%\</code>. If an exception is raised, this indicates that the injected template syntax is potentially being interpreted by the server in some way. This is one sign that a vulnerability to server-side template injection may exist.
+        </p><p>
+            Server-side template injection vulnerabilities occur in two distinct contexts, each of which requires its own detection method. Regardless of the results of your fuzzing attempts, it is important to also try the following context-specific approaches. If fuzzing was inconclusive, a vulnerability may still reveal itself using one of these approaches. Even if fuzzing did suggest a template injection vulnerability, you still need to identify its context in order to exploit it.
+        </p><h4>Plaintext context</h4><p>
+            Most template languages allow you to freely input content either by using HTML tags directly or by using the template's native syntax, which will be rendered to HTML on the back-end before the HTTP response is sent. For example, in Freemarker, the line<code> render('Hello ' + username)</code> would render to something like <code>Hello Carlos</code>.
+        </p><p>
+            This can sometimes be exploited for XSS and is in fact often mistaken for a simple XSS vulnerability. However, by setting mathematical operations as the value of the parameter, we can test whether this is also a potential entry point for a server-side template injection attack.
+        </p><p>
+            For example, consider a template that contains the following vulnerable code:
+        </p><code class="code-scrollable">render('Hello ' + username)</code><p>
+            During auditing, we might test for server-side template injection by requesting a URL such as:
+        </p><code class="code-scrollable">http://vulnerable-website.com/?username=${7*7}</code><p>
+            If the resulting output contains <code>Hello 49</code>, this shows that the mathematical operation is being evaluated server-side. This is a good proof of concept for a server-side template injection vulnerability.
+        </p><p>
+            Note that the specific syntax required to successfully evaluate the mathematical operation will vary depending on which template engine is being used. We'll discuss this in more detail in the <a href="/web-security/server-side-template-injection#identify">Identify</a> step.
+        </p><h4>Code context</h4><p>
+            In other cases, the vulnerability is exposed by user input being placed within a template expression, as we saw earlier with our email example. This may take the form of a user-controllable variable name being placed inside a parameter, such as:
+        </p><code class="code-scrollable">greeting = getQueryParameter('greeting')
+engine.render(&quot;Hello {{&quot;+greeting+&quot;}}&quot;, data)</code><p>
+            On the website, the resulting URL would be something like:
+        </p><code class="code-scrollable">http://vulnerable-website.com/?greeting=data.username</code><p>
+            This would be rendered in the output to <code>Hello Carlos</code>, for example.
+        </p><p>
+            This context is easily missed during assessment because it doesn't result in obvious XSS and is almost indistinguishable from a simple hashmap lookup. One method of testing for server-side template injection in this context is to first establish that the parameter doesn't contain a direct XSS vulnerability by injecting arbitrary HTML into the value:
+        </p><code class="code-scrollable">http://vulnerable-website.com/?greeting=data.username&lt;tag&gt;</code><p>
+            In the absence of XSS, this will usually either result in a blank entry in the output (just <code>Hello</code> with no username), encoded tags, or an error message. The next step is to try and break out of the statement using common templating syntax and attempt to inject arbitrary HTML after it:
+        </p><code class="code-scrollable">http://vulnerable-website.com/?greeting=data.username}}&lt;tag&gt;</code><p>
+            If this again results in an error or blank output, you have either used syntax from the wrong templating language or, if no template-style syntax appears to be valid, server-side template injection is not possible. Alternatively, if the output is rendered correctly, along with the arbitrary HTML, this is a key indication that a server-side template injection vulnerability is present:
+        </p><code class="code-scrollable">Hello Carlos&lt;tag&gt;</code><h3 id="identify">Identify</h3><p>
+            Once you have detected the template injection potential, the next step is to identify the template engine.
+        </p><p>
+            Although there are a huge number of templating languages, many of them use very similar syntax that is specifically chosen not to clash with HTML characters. As a result, it can be relatively simple to create probing payloads to test which template engine is being used.
+        </p><p>
+            Simply submitting invalid syntax is often enough because the resulting error message will tell you exactly what the template engine is, and sometimes even which version. For example, the invalid expression <code>&lt;%=foobar%&gt;</code> triggers the following response from the Ruby-based ERB engine:
+        </p><code class="code-scrollable">(erb):1:in `&lt;main&gt;': undefined local variable or method `foobar' for main:Object (NameError)
+from /usr/lib/ruby/2.5.0/erb.rb:876:in `eval'
+from /usr/lib/ruby/2.5.0/erb.rb:876:in `result'
+from -e:4:in `&lt;main&gt;'</code><p>
+            Otherwise, you'll need to manually test different language-specific payloads and study how they are interpreted by the template engine. Using a process of elimination based on which syntax appears to be valid or invalid, you can narrow down the options quicker than you might think. A common way of doing this is to inject arbitrary mathematical operations using syntax from different template engines. You can then observe whether they are successfully evaluated. To help with this process, you can use a decision tree similar to the following:
+        </p><img alt="Template decision tree" class="center-block" src="/web-security/images/template-decision-tree.png"><p>
+            You should be aware that the same payload can sometimes return a successful response in more than one template language. For example, the payload <code>{{7*'7'}}</code> returns <code>49</code> in Twig and <code>7777777</code> in Jinja2. Therefore, it is important not to jump to conclusions based on a single successful response.
+        </p><h3 id="exploit">Exploit</h3><p>
+            After detecting that a potential vulnerability exists and successfully identifying the template engine, you can begin trying to find ways of exploiting it.
+        </p><div class="highlightedarea">
+			<h4>Read more</h4>
+			
+		<ul><li><a href="/web-security/server-side-template-injection/exploiting">Exploiting server-side template injection vulnerabilities</a></li></ul></div><h2 id="how-to-prevent-server-side-template-injection-vulnerabilities">How to prevent server-side template injection vulnerabilities</h2><p>
+            The best way to prevent server-side template injection is to not allow any users to modify or submit new templates. However, this is sometimes unavoidable due to business requirements.
+        </p><p>
+            One of the simplest ways to avoid introducing server-side template injection vulnerabilities is to always use a &quot;logic-less&quot; template engine, such as Mustache, unless absolutely necessary. Separating the logic from presentation as much as possible can greatly reduce your exposure to the most dangerous template-based attacks.
+        </p><p>
+            Another measure is to only execute users' code in a sandboxed environment where potentially dangerous modules and functions have been removed altogether. Unfortunately, sandboxing untrusted code is inherently difficult and prone to bypasses.
+        </p><p>
+            Finally, another complementary approach is to accept that arbitrary code execution is all but inevitable and apply your own sandboxing by deploying your template environment in a locked-down Docker container, for example.
+        </p>
+        
+        <div widget-id="academy-registration-footer"></div>
+    
+    </div>
+
+
+    <script src="/bundles/static-content/public/scripts/main.js?v=NgmUiCsYwhVhi9Bra0okrfjnxkY" nonce="&#x2B;FgJ5T&#x2B;I4//fsHsvIa/MUJUOUGY&#x2B;Q8di"></script>
+    <script src="/bundles/static-content/public/scripts/web-security.js?v=aLTI8D4Ps-_XoohiDNpR1LAARC0" nonce="&#x2B;FgJ5T&#x2B;I4//fsHsvIa/MUJUOUGY&#x2B;Q8di"></script>
+
+            
+        <div class="sidebar-content">
+            <div widget-id="academy-accountstatus"></div>
+            <div class="sidebar-trial-advert">
+                <img alt="Try Burp Suite for Free" src="/content/images/logos/burp-suite-icon.svg">
+                <h4>Find server-side template injection vulnerabilities using Burp Suite</h4>
+                <a class="button-white" href="https://portswigger.net/burp">Try for free</a>
+            </div>
+        </div>
+    
+        </main>
+    </div>
+</div>
+<footer class="wrapper">
+    <div class="container">
+        <div>
+            <p>Burp Suite</p>
+            <a href="/burp/vulnerability-scanner">Web vulnerability scanner</a>
+            <a href="/burp">Burp Suite Editions</a>
+            <a href="/burp/releases">Release Notes</a>
+        </div>
+        <div>
+            <p>Vulnerabilities</p>
+            <a href="/web-security/cross-site-scripting">Cross-site scripting (XSS)</a>
+            <a href="/web-security/sql-injection">SQL injection</a>
+            <a href="/web-security/csrf">Cross-site request forgery</a>
+            <a href="/web-security/xxe">XML external entity injection</a>
+            <a href="/web-security/file-path-traversal">Directory traversal</a>
+            <a href="/web-security/ssrf">Server-side request forgery</a>
+        </div>
+        <div>
+            <p>Customers</p>
+            <a href="/organizations">Organizations</a>
+            <a href="/testers">Testers</a>
+            <a href="/developers">Developers</a>
+        </div>
+        <div>
+            <p>Company</p>
+            <a href="/about">About</a>
+            <a href="/careers">Careers</a>
+            <a href="/about/contact">Contact</a>
+            <a href="/legal">Legal</a>
+            <a href="/privacy">Privacy Notice</a>
+            <a href="/modern-slavery-statement">Modern Slavery Statement</a>
+        </div>
+        <div>
+            <p>Insights</p>
+            <a href="/web-security">Web Security Academy</a>
+            <a href="/blog">Blog</a>
+            <a href="/research">Research</a>
+        </div>
+        <div>
+            <a href="/"><img src="/content/images/logos/portswigger-logo.svg" alt="PortSwigger Logo"
+                             class="footer-logo"></a>
+            <a class="button-outline-blue-small camelcase" href="https://twitter.com/Burp_Suite" rel="noreferrer"><span
+                    class="icon-twitter"></span> Follow us</a>
+            <p class="grey">&copy; 2026 PortSwigger Ltd.</p>
+        </div>
+    </div>
+</footer>
+<a href="#top" class="back-to-top"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
+    <polygon points="4.07 14.7 5.03 15.78 12.48 9.13 19.94 15.78 20.9 14.7 12.48 7.2 4.07 14.7" fill="#f63"/>
+    <path d="M13,0A13,13,0,1,0,26,13,13,13,0,0,0,13,0Zm0,24.56A11.56,11.56,0,1,1,24.56,13,11.58,11.58,0,0,1,13,24.56Z"
+          fill="#f63"/>
+</svg></a>
+
+
+<script nonce="+FgJ5T+I4//fsHsvIa/MUJUOUGY+Q8di" type="text/javascript">
+    piAId = '1067743';
+    piCId = '';
+    piHostname = 'go.portswigger.net';
+
+    (function () {
+        function async_load() {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + piHostname + '/pd.js';
+            var c = document.getElementsByTagName('script')[0];
+            c.parentNode.insertBefore(s, c);
+        }
+
+        if (window.attachEvent) {
+            window.attachEvent('onload', async_load);
+        } else {
+            window.addEventListener('load', async_load, false);
+        }
+    })();
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ Ataker-boop/
 - **Физическая изоляция**: атакующий работает на MacBook Air, отдельно от защиты (Mac Studio)
 - **Blind testing**: защита НЕ видит vault атак заранее
 - **Fail-open для атакующего**: если атака обошла защиту — это результат, не ошибка
-- **Модель**: Llama-3.1-8B-abliterated Q5_K_L (для генерации новых атак через LLM)
+- **Модели (готовка → потом бой):** Planner **Dolphin3-Cyber-8B** Q4_K_M + Executor **Llama-3.2-3B-abliterated** Q4_K_M (см. [`MODELS.md`](./MODELS.md))
 
 ## Использование
 
@@ -60,6 +60,7 @@ print(report.summary())
 | xml_wrap | Layer 1 | XML/CDATA обёртка |
 | json_wrap | Layer 1 | JSON role injection |
 | multi_encoding | Layer 1-2 | Комбинация base64 + homoglyph |
+| icl_reorder | Layer 3 | Recency-bias: harmful demo последним в few-shot |
 
 ## 15 категорий атак
 

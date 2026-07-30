@@ -16,6 +16,10 @@ __pycache__/
 # Cache/logs directory
 data/
 
+# RAG L1 Dataview/python export (keep folder via .gitkeep)
+vault/00-System/cache/candidates.json
+vault/00-System/cache/*.json
+
 # Virtual environments
 .venv/
 venv/
@@ -37,3 +41,7 @@ build/
 
 # Temp files
 *.tmp
+
+# LLM models (GGUF) — НЕ пушить в git (большие файлы)
+*.gguf
+Ataker-boop/models/

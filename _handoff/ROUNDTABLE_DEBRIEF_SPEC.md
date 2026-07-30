@@ -251,10 +251,12 @@ MaskedUtterance {
 
 ## Следующие шаги реализации (не часть канона-текста — очередь)
 
-1. Scaffold `DebriefBroker` + схемы receipts (Air).
-2. Минимальный Round Table UI на Air.
+1. ~~Scaffold `DebriefBroker` + схемы receipts (Air).~~ ✅
+2. ~~Минимальный Round Table UI на Air.~~ ✅ scaffold
 3. Hook режима Combat/Debrief к auth + проверке poison mount.
 4. Wire SealedRedLoop receipts → утренний стол.
-5. Probnoki / Ataker tests на redact fail-closed.
+5. ~~Probnoki / Ataker tests на redact fail-closed.~~ ✅ #60
+6. **DebriefSummarizer** — см. `_handoff/DEBRIEF_SUMMARIZER_SPEC.md` (канон 2026-07-30). Probnoki #61.
 
 Код — только после явного «Разрешаю» на реализацию (эта спека уже разрешена оператором 2026-07-24).
+Summarizer scaffold — оператор 2026-07-30.

@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
 from krepost.memory.episode_hook import record_episode
-from krepost.prompts.assistant import build_rag_messages
+from krepost.prompts.assistant import build_fast_system_prompt, build_rag_messages
 from krepost.security.pipeline import SecurityContext, Verdict
 
 if TYPE_CHECKING:
@@ -192,6 +192,19 @@ class Orchestrator:
                 gen_kwargs: Dict[str, Any] = {}
                 if rag_messages is not None:
                     gen_kwargs["messages"] = rag_messages
+                elif use_memory:
+                    # Память включена, но чанков нет — всё равно роль Крепости + пустой контекст.
+                    gen_kwargs["messages"] = build_rag_messages(
+                        text, [], vault_name=self.vault_name,
+                    )
+                else:
+                    gen_kwargs["messages"] = [
+                        {
+                            "role": "system",
+                            "content": build_fast_system_prompt(self.vault_name),
+                        },
+                        {"role": "user", "content": text},
+                    ]
                 raw_output = await route.backend.generate(text, in_ctx, **gen_kwargs)
         except Exception as e:
             # Инфраструктурный сбой бэкенда — мягкая деградация, не атака.

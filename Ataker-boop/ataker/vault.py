@@ -32,17 +32,8 @@ class AttackVault:
         self._db_path = str(db_path)
         self._init_db()
 
-    def _connect(self):
-        """Единая точка соединения с WAL (как в Krepost governance/trust_registry):
-        конкурентные чтения не блокируют запись, timeout вместо мгновенного
-        'database is locked'. Безопасно для прогонов red-team под нагрузкой."""
-        conn = sqlite3.connect(self._db_path, timeout=5.0)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        return conn
-
     def _init_db(self):
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS payloads (
                     id TEXT PRIMARY KEY,
@@ -84,15 +75,9 @@ class AttackVault:
                     status TEXT DEFAULT 'open',
                     discovered_at REAL NOT NULL,
                     resolved_at REAL,
-                    resolution_comment TEXT,
                     FOREIGN KEY (payload_id) REFERENCES payloads(id)
                 )
             """)
-            # Безопасная миграция: колонка resolution_comment могла отсутствовать
-            # в БД, созданной до фикса #19. PRAGMA table_info → проверяем.
-            cols = {row[1] for row in conn.execute("PRAGMA table_info(weaknesses)").fetchall()}
-            if "resolution_comment" not in cols:
-                conn.execute("ALTER TABLE weaknesses ADD COLUMN resolution_comment TEXT")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_payloads_category ON payloads(category)"
             )
@@ -107,7 +92,7 @@ class AttackVault:
             )
 
     def store_payloads(self, payloads: List[AttackPayload], source: str = "template"):
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             for p in payloads:
                 conn.execute("""
                     INSERT OR IGNORE INTO payloads
@@ -135,7 +120,7 @@ class AttackVault:
         pipeline_version: str = "",
         run_id: str = "",
     ):
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.execute("""
                 INSERT INTO results
                 (payload_id, actual_verdict, actual_layer, confidence,
@@ -170,7 +155,7 @@ class AttackVault:
                     )
 
     def get_payload(self, payload_id: str) -> Optional[Dict[str, Any]]:
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 "SELECT * FROM payloads WHERE id = ?", (payload_id,)
@@ -183,7 +168,7 @@ class AttackVault:
         self, category: AttackCategory | str
     ) -> List[Dict[str, Any]]:
         cat = category.value if isinstance(category, AttackCategory) else category
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM payloads WHERE category = ? ORDER BY created_at",
@@ -192,7 +177,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_all_payloads(self) -> List[Dict[str, Any]]:
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM payloads ORDER BY category, created_at"
@@ -200,7 +185,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_weaknesses(self, status: str = "open") -> List[Dict[str, Any]]:
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM weaknesses WHERE status = ? ORDER BY discovered_at DESC",
@@ -209,7 +194,7 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def get_bypassed_payloads(self, run_id: str | None = None) -> List[Dict[str, Any]]:
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.row_factory = sqlite3.Row
             if run_id:
                 rows = conn.execute("""
@@ -228,15 +213,14 @@ class AttackVault:
         return [dict(r) for r in rows]
 
     def resolve_weakness(self, weakness_id: int, comment: str = ""):
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             conn.execute("""
-                UPDATE weaknesses
-                SET status = 'resolved', resolved_at = ?, resolution_comment = ?
+                UPDATE weaknesses SET status = 'resolved', resolved_at = ?
                 WHERE id = ?
-            """, (time.time(), comment, weakness_id))
+            """, (time.time(), weakness_id))
 
     def get_stats(self) -> Dict[str, Any]:
-        with self._connect() as conn:
+        with sqlite3.connect(self._db_path) as conn:
             total = conn.execute("SELECT COUNT(*) FROM payloads").fetchone()[0]
             tested = conn.execute("SELECT COUNT(DISTINCT payload_id) FROM results").fetchone()[0]
             bypassed = conn.execute(
@@ -262,25 +246,105 @@ class AttackVault:
             "by_category": by_category,
         }
 
-    def import_from_jsonl(self, path: str | Path, source: str = "archive"):
+    def import_from_jsonl(
+        self,
+        path: str | Path,
+        source: str = "archive",
+        *,
+        limit: int | None = None,
+        categories: List[str] | None = None,
+        skip_needs_review: bool = False,
+    ) -> int:
+        """
+        Импорт атак из jsonl.
+
+        Поддерживает схему базы Атакера:
+          {id, source, category, text, success_signal, raw_meta}
+        и legacy: {id, category, text|original|mutated, mutations}.
+        """
         path = Path(path)
         if not path.exists():
             logger.warning(f"[VAULT] Файл не найден: {path}")
-            return
+            return 0
 
-        payloads = []
-        for line in path.read_text(encoding="utf-8").strip().split("\n"):
-            if not line.strip():
-                continue
-            data = json.loads(line)
-            payloads.append(AttackPayload(
-                id=data.get("id", f"import-{len(payloads)}"),
-                category=AttackCategory(data.get("category", "direct_injection")),
-                original=data.get("text", data.get("original", "")),
-                mutated=data.get("text", data.get("mutated", "")),
-                mutations_applied=data.get("mutations", []),
-                metadata={"imported_from": str(path)},
-            ))
+        allowed = set(categories) if categories else None
+        payloads: List[AttackPayload] = []
+        skipped = 0
 
-        self.store_payloads(payloads, source=source)
-        logger.info(f"[VAULT] Импортировано {len(payloads)} из {path}")
+        with path.open(encoding="utf-8", errors="replace") as fh:
+            for line_no, line in enumerate(fh, 1):
+                if limit is not None and len(payloads) >= limit:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    skipped += 1
+                    continue
+
+                text = (
+                    data.get("text")
+                    or data.get("mutated")
+                    or data.get("original")
+                    or ""
+                )
+                text = str(text).strip()
+                if not text:
+                    skipped += 1
+                    continue
+
+                cat_raw = data.get("category", "jailbreak")
+                try:
+                    category = AttackCategory(cat_raw)
+                except ValueError:
+                    category = AttackCategory.JAILBREAK
+
+                if allowed is not None and category.value not in allowed:
+                    skipped += 1
+                    continue
+
+                raw_meta = data.get("raw_meta") or data.get("metadata") or {}
+                if not isinstance(raw_meta, dict):
+                    raw_meta = {"value": raw_meta}
+                if skip_needs_review and raw_meta.get("needs_review"):
+                    skipped += 1
+                    continue
+
+                mutations = data.get("mutations") or data.get("mutations_applied") or []
+                if not isinstance(mutations, list):
+                    mutations = []
+
+                row_source = data.get("source") or source
+                meta = {
+                    "imported_from": str(path),
+                    "line": line_no,
+                    "fortress_source": row_source,
+                    "success_signal": data.get("success_signal"),
+                    **raw_meta,
+                }
+                payloads.append(
+                    AttackPayload(
+                        id=data.get("id") or f"import-{line_no}-{len(payloads)}",
+                        category=category,
+                        original=data.get("original") or text,
+                        mutated=data.get("mutated") or text,
+                        mutations_applied=mutations,
+                        metadata=meta,
+                    )
+                )
+
+        # store с per-row source если есть fortress_source — группируем
+        by_source: Dict[str, List[AttackPayload]] = {}
+        for p in payloads:
+            src = str(p.metadata.get("fortress_source") or source)
+            by_source.setdefault(src, []).append(p)
+        for src, group in by_source.items():
+            self.store_payloads(group, source=src)
+
+        logger.info(
+            f"[VAULT] Импортировано {len(payloads)} из {path} "
+            f"(skipped={skipped}, sources={list(by_source)})"
+        )
+        return len(payloads)

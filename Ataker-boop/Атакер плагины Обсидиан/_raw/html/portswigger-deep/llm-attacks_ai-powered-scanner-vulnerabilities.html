@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>AI-powered scanner vulnerabilities | Web Security Academy</title>
+    <meta content="Application security teams often deploy AI-powered scanners that use Large Language Models (LLMs) to scan web applications for vulnerabilities. While ..." name="description">
+    <!-- Twitter data -->
+
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="">
+<meta name="twitter:image" content="https://portswigger.net/content/images/logos/academy-twittercard.png">
+    <meta name="twitter:site" content="@WebSecAcademy">
+
+<!-- Open Graph data -->
+<meta property="og:title" content=""/>
+<meta property="og:url" content="https://portswigger.net"/>
+<meta property="og:image" content="https://portswigger.net/content/images/logos/academy-twittercard.png"/>
+<meta property="og:type" content="website"/>
+<link rel="canonical" href="https://portswigger.net/web-security/llm-attacks/ai-powered-scanner-vulnerabilities"/>
+<link rel="icon" href="/content/images/logos/favicon.ico" type="image/x-icon"/>
+<link rel="apple-touch-icon" href="/content/images/logos/apple-touch-icon.png">
+    <link href="/content/pswebsecacademy.css" rel="stylesheet" type="text/css">
+    <link rel="preload" href="/content/fonts/ps-icons-small/ps-icons-small.woff?td2uot" as="font" crossorigin="anonymous">
+<link rel="preload" href="/content/fonts/ps-main/ps-icons.woff?l1la2n" as="font" crossorigin="anonymous">
+    
+
+<script nonce="iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne">
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Dr qr Ci Br Zr Pr capture calculateEventProperties Ur register register_once register_for_session unregister unregister_for_session Xr getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Jr identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty Gr Hr createPersonProfile setInternalOrTestUser Wr Fr tn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing $r debug ki Yr getPageViewId captureTraceFeedback captureTraceMetric Rr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_zmnmWxifkm9THV54Mrn2XvFDL3Tq497pyRgrYbDu5PGW', {
+        api_host: 'https://phingest.portswigger.com',
+        defaults: '2026-01-30',
+        person_profiles: 'identified_only',
+    })
+</script>
+
+</head>
+<body class="theme-">
+
+
+<script nonce="iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne">
+    (function (window, document, dataLayerName, id) {
+        window[dataLayerName] = window[dataLayerName] || [], window[dataLayerName].push({
+            start: (new Date).getTime(),
+            event: "stg.start"
+        });
+        var scripts = document.getElementsByTagName('script')[0], tags = document.createElement('script');
+        var qP = [];
+        dataLayerName !== "dataLayer" && qP.push("data_layer_name=" + dataLayerName), tags.nonce = "iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne";
+        var qPString = qP.length > 0 ? ("?" + qP.join("&")) : "";
+        tags.async = !0, tags.src = "https://ps.containers.piwik.pro/" + id + ".js" + qPString,
+            scripts.parentNode.insertBefore(tags, scripts);
+        !function (a, n, i) {
+            a[n] = a[n] || {};
+            for (var c = 0; c < i.length; c++) !function (i) {
+                a[n][i] = a[n][i] || {}, a[n][i].api = a[n][i].api || function () {
+                    var a = [].slice.call(arguments, 0);
+                    "string" == typeof a[0] && window[dataLayerName].push({
+                        event: n + "." + i + ":" + a[0],
+                        parameters: [].slice.call(arguments, 1)
+                    })
+                }
+            }(i[c])
+        }(window, "ppms", ["tm", "cm"]);
+    })(window, document, 'dataLayer', '287552c2-4917-42e0-8982-ba994a2a73d7');
+</script>
+
+
+
+<header class="page-header" id="top">
+    <div class="container">
+    <a class="logo" href="/"></a>
+    <div class="header-right">
+        <div class="login-buttons">
+            <a class="button-orange-small" href="/users/youraccount/personaldetails">My account</a>
+        </div>
+        
+
+    <input type="checkbox" id="hamburger-mobile" class="hamburger-input-mobile">
+    <input type="radio" id="hamburger-desktop" class="hamburger-input-desktop" name="mega-nav-input">
+    <div class="hamburger-menu-mobile">
+        <label class="hamburger-menu-label header-hidden" for="hamburger-mobile">
+            <span class="hamburger-layers"></span>
+        </label>
+    </div>
+    <div class="mega-nav">
+        <input type="radio" id="mega-nav-close" class="mega-nav-input-close" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-1" class="mega-nav-input-1" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-2" class="mega-nav-input-2" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-6" class="mega-nav-input-6" name="mega-nav-input">
+        <input type="radio" id="mega-nav-label-7" class="mega-nav-input-7" name="mega-nav-input">
+
+        <label for="mega-nav-close" class="mega-nav-close"></label>
+
+        <label class="mega-nav-label mega-nav-label-1" for="mega-nav-label-1">
+            <span class="mega-nav-text">Products</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <label class="mega-nav-label mega-nav-label-2" for="mega-nav-label-2">
+            <span class="mega-nav-text">Solutions</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <a class="mega-nav-link" href="/research"><span class="mega-nav-text">Research</span></a>
+        <a class="mega-nav-link" href="/web-security"><span class="mega-nav-text">Academy</span></a>
+        <label class="mega-nav-label mega-nav-label-6" for="mega-nav-label-6">
+            <span class="mega-nav-text">Support</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+
+        <label class="mega-nav-label mega-nav-label-7 header-hidden" for="mega-nav-label-7">
+            <span class="mega-nav-text">Company</span>
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <div class="hamburger-menu-desktop">
+            <label class="hamburger-menu-label header-show" for="hamburger-desktop">
+                <span class="hamburger-layers"></span>
+            </label>
+            <div>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+                <a class="hamburger-menu-desktop-link hamburger-menu-desktop-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+            </div>
+        </div>
+
+        <a class="mega-nav-link header-hidden" href="/users/youraccount"><span class="mega-nav-text">My account</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-1" href="/customers"><span class="mega-nav-text">Customers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-3" href="/about"><span class="mega-nav-text">About</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-4" href="/blog"><span class="mega-nav-text">Blog</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-5" href="/careers"><span class="mega-nav-text">Careers</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-6" href="/legal"><span class="mega-nav-text">Legal</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-7" href="/contact"><span class="mega-nav-text">Contact</span></a>
+        <a class="hamburger-menu-link hamburger-menu-link-8" href="/support/reseller-faqs"><span class="mega-nav-text">Resellers</span></a>
+
+        <div class="mega-nav-container">
+
+            <div class="mega-nav-content mega-nav-content-1">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <a href="/burp/burp-at" class="link-block-white">
+                                <img src="/mega-nav/images/burp-at.svg" alt="Burp AT">
+                                <span><strong>Burp AT</strong></span>
+                                <span>Agentic AI that extends human-led pentesting.</span>
+                            </a>
+
+                            <a href="/burp/enterprise" class="link-block-white">
+                                <img src="/content/images/svg/icons/enterprise.svg" alt="Burp Suite DAST">
+                                <span><strong>Burp Suite DAST</strong></span>
+                                <span>The enterprise-enabled dynamic web vulnerability scanner.</span>
+                            </a>
+
+                            <a href="/burp/pro" class="link-block-white">
+                                <img src="/content/images/svg/icons/professional.svg" alt="Burp Suite Professional">
+                                <span><strong>Burp Suite Professional</strong></span>
+                                <span>The world's #1 web penetration testing toolkit.</span>
+                            </a>
+
+                            <a href="/burp/communitydownload" class="link-block-white">
+                                <img src="/content/images/svg/icons/community.svg" alt="Burp Suite Community Edition">
+                                <span><strong>Burp Suite Community Edition</strong></span>
+                                <span>The best manual tools to start web security testing.</span>
+                            </a>
+
+                            <a href="/burp" class="chevron-after">View all product editions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/vulnerability-scanner">
+                                    <p><strong>Burp Scanner</strong></p>
+                                    <p>Burp Suite's web vulnerability scanner</p>
+                                    <img src="/mega-nav/images/burp-suite-scanner.jpg" alt="Burp Suite's web vulnerability scanner'">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-2">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/solutions/attack-surface-visibility" class="link-block-white">
+                                    <span><strong>Attack surface visibility</strong></span>
+                                    <span>Improve security posture, prioritize manual testing, free up time.</span>
+                                </a>
+                                <a href="/solutions/ci-driven-scanning" class="link-block-white">
+                                    <span><strong>CI-driven scanning</strong></span>
+                                    <span>More proactive security - find and fix vulnerabilities earlier.</span>
+                                </a>
+                                <a href="/solutions" class="link-block-white">
+                                    <span><strong>Application security testing</strong></span>
+                                    <span>See how our software enables the world to secure the web.</span>
+                                </a>
+                                <a href="/solutions/devsecops" class="link-block-white">
+                                    <span><strong>DevSecOps</strong></span>
+                                    <span>Catch critical bugs; ship more secure software, more quickly.</span>
+                                </a>
+
+                                <a href="/solutions/penetration-testing" class="link-block-white">
+                                    <span><strong>Penetration testing</strong></span>
+                                    <span>Accelerate penetration testing - find more bugs, more quickly.</span>
+                                </a>
+                                <a href="/solutions/automated-security-testing" class="link-block-white">
+                                    <span><strong>Automated scanning</strong></span>
+                                    <span>Scale dynamic scanning. Reduce risk. Save time/money.</span>
+                                </a>
+
+                                <a href="/solutions/bug-bounty-hunting" class="link-block-white">
+                                    <span><strong>Bug bounty hunting</strong></span>
+                                    <span>Level up your hacking and earn more bug bounties.</span>
+                                </a>
+                                <a href="/solutions/compliance" class="link-block-white">
+                                    <span><strong>Compliance</strong></span>
+                                    <span>Enhance security monitoring to comply with confidence.</span>
+                                </a>
+                            </div>
+                            <a href="/solutions" class="chevron-after">View all solutions</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/dast/resources/dast-vs-professional">
+                                    <p><strong>Product comparison</strong></p>
+                                    <p>What's the difference between Pro and DAST?</p>
+                                    <img src="/mega-nav/images/burp-suite.jpg" alt="Burp Suite Professional vs Burp Suite DAST">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="mega-nav-content mega-nav-content-6">
+                <div class="section-white-medium-no-padding">
+                    <div class="container-columns-66-percent-right">
+                        <div>
+                            <div class="container-columns">
+                                <a href="/support" class="link-block-white">
+                                    <span><strong>Support Center</strong></span>
+                                    <span>Get help and advice from our experts on all things Burp.</span>
+                                </a>
+                                <a href="/burp/documentation" class="link-block-white">
+                                    <span><strong>Documentation</strong></span>
+                                    <span>Tutorials and guides for Burp Suite.</span>
+                                </a>
+                                <a href="/burp/documentation/desktop/getting-started" class="link-block-white">
+                                    <span><strong>Get Started - Professional</strong></span>
+                                    <span>Get started with Burp Suite Professional.</span>
+                                </a>
+                                <a href="/burp/documentation/dast/setup" class="link-block-white">
+                                    <span><strong>Get Started - DAST</strong></span>
+                                    <span>Get started with Burp Suite DAST.</span>
+                                </a>
+                                <a href="/burp/releases" class="link-block-white">
+                                    <span><strong>Downloads</strong></span>
+                                    <span>Download the latest version of Burp Suite.</span>
+                                </a>
+                            </div>
+                            <a href="/support" class="chevron-after">Visit the Support Center</a>
+                        </div>
+
+                        <div>
+                            <div class="container-cards-lists-white">
+                                <a href="/burp/releases">
+                                    <p><strong>Downloads</strong></p>
+                                    <p>Download the latest version of Burp Suite.</p>
+                                    <img src="/mega-nav/images/latest-burp-suite-software-download.jpg" alt="The latest version of Burp Suite software for download">
+                                </a>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    </div>
+</div>
+</header>
+
+            <nav class="navigation-top">
+                <input type="checkbox" id="nav-main-enterprise">
+                <label for="nav-main-enterprise">
+                    <span>Academy home</span>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li><a href="https://portswigger.net/web-security/dashboard">Dashboard</a></li>
+                    <li><a href="https://portswigger.net/web-security/learning-paths">Learning paths</a></li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-topics">
+                        <label for="nav-main-academy-topics">
+                            <span>Latest topics</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="/web-security/request-smuggling">Request smuggling</a>
+                            <a href="/web-security/web-cache-deception">Web cache deception</a>
+                            <a href="/web-security/llm-attacks">Web LLM attacks</a>
+                            <a href="/web-security/api-testing">API testing</a>
+                            <a href="/web-security/nosql-injection">NoSQL injection</a>
+                            <a href="/web-security/all-topics">View all topics</a>
+                        </div>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-all-content">
+                        <label for="nav-main-academy-all-content">
+                            <span>All content</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="/web-security/all-labs">All labs</a>
+                            <a href="/web-security/all-topics">All topics</a>
+                            <a href="/web-security/mystery-lab-challenge">Mystery labs</a>
+                        </div>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-hall-of-fame">
+                        <label for="nav-main-academy-hall-of-fame">
+                            <span>Hall of Fame</span>
+                            <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                            <a href="https://portswigger.net/web-security/hall-of-fame">Leaderboard</a>
+                            <a href="https://portswigger.net/web-security/getting-started/kamil-vavra/index.html">Interview - Kamil Vavra</a>
+                            <a href="https://portswigger.net/web-security/getting-started/johnny-villarreal/index.html">Interview - Johnny Villarreal</a>
+                            <a href="https://portswigger.net/web-security/getting-started/andres-rauschecker/index.html">Interview - Andres Rauschecker</a>
+                        </div>
+                    </li>
+                    <li><a href="https://portswigger.net/web-security/getting-started/index.html">Get started</a></li>
+                    <li>
+                        <input type="checkbox" id="nav-main-academy-certification">
+                        <label for="nav-main-academy-certification">
+                             <span>Get certified</span>
+                             <span class="icon-arrow-head-down"></span>
+                        </label>
+                        <div>
+                             <a href="https://portswigger.net/web-security/certification/index.html">Get certified</a>
+                             <a href="https://portswigger.net/web-security/certification/how-to-prepare/index.html">How to prepare</a>
+                             <a href="https://portswigger.net/web-security/certification/how-it-works/index.html">How it works</a>
+                             <a href="https://portswigger.net/web-security/certification/practice-exam/index.html">Practice exam</a>
+                             <a href="https://portswigger.net/web-security/certification/exam-hints-and-guidance/index.html">Exam hints and guidance</a>
+                             <a href="https://portswigger.net/web-security/certification/how-it-works/index.html#what-the-exam-involves">What the exam involves</a>
+                             <a href="https://portswigger.net/web-security/certification/frequently-asked-questions/index.html">FAQs</a>
+                             <a href="https://portswigger.net/web-security/certification#validate-your-certification">Validate your certification</a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+        
+<div class="wrapper-large">
+    <div class="container-academy">
+
+        <input class="nav-lhs-toggle-input" type="checkbox" id="nav-lhs-toggle">
+        <aside class="nav-lhs" id="tree-nav" tree-nav-version="64">
+            <nav class="nav-lhs-scrollable">
+                <label class="nav-lhs-toggle-label" for="nav-lhs-toggle"></label>
+                
+
+        <a class="nav-back" href="/web-security/all-topics">
+            <span class="icon-arrow-head-left"></span>
+            Back to all topics
+        </a>
+        <input type="checkbox" id="nav-main-id">
+        <label class="nav-label" for="nav-main-id">
+            <span class="icon-arrow-head-down"></span>
+        </label>
+        <h3>API testing</h3>
+        <ul>
+            <li>
+                <input type="checkbox" id="sub-nav-id-1">
+                <label for="sub-nav-id-1">
+                    <a href="/web-security/llm-attacks">Overview</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li>
+                        <a href="/web-security/llm-attacks#what-is-a-large-language-model">What is a large language model?</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#llm-attacks-and-prompt-injection">LLM attacks and prompt injection</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#detecting-llm-vulnerabilities">Detecting LLM vulnerabilities</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <input type="checkbox" id="sub-nav-id-2">
+                <label for="sub-nav-id-2">
+                    <a href="/web-security/llm-attacks#exploiting-llm-apis-functions-and-plugins">Exploiting LLM APIs, functions, and plugins</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li>
+                        <a href="/web-security/llm-attacks#how-llm-apis-work">How LLM APIs work</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#mapping-llm-api-attack-surface">Mapping LLM API attack surface</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#chaining-vulnerabilities-in-llm-apis">Chaining vulnerabilities in LLM APIs</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#insecure-output-handling">Insecure output handling</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <input type="checkbox" id="sub-nav-id-3">
+                <label for="sub-nav-id-3">
+                    <a href="/web-security/llm-attacks#indirect-prompt-injection">Indirect prompt injection</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li>
+                        <a href="/web-security/llm-attacks#training-data-poisoning">Training data poisoning</a>
+                    </li>
+                </ul>
+            </li>
+            <li><a href="/web-security/llm-attacks#leaking-sensitive-training-data">Leaking sensitive training data</a></li>
+            <li>
+                <input type="checkbox" id="sub-nav-id-4">
+                <label for="sub-nav-id-4">
+                    <a href="/web-security/llm-attacks#defending-against-llm-attacks">Defending against LLM attacks</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li>
+                        <a href="/web-security/llm-attacks#treat-apis-given-to-llms-as-publicly-accessible">Treat APIs given to LLMs as publicly accessible</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#don-t-feed-llms-sensitive-data">Don't feed LLMs sensitive data</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks#don-t-rely-on-prompting-to-block-attacks">Don't rely on prompting to block attacks</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <input type="checkbox" id="sub-nav-id-5">
+                <label for="sub-nav-id-5">
+                    <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities">AI-powered scanner vulnerabilities</a>
+                    <span class="icon-arrow-head-down"></span>
+                </label>
+                <ul>
+                    <li>
+                        <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities#what-are-ai-powered-web-application-security-scanners">What are AI-powered web application security scanners?</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities#indirect-prompt-injection-in-ai-powered-scanners">Indirect prompt injection in AI-powered scanners</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities#data-exfiltration-via-ai-powered-scanners">Data exfiltration via AI-powered scanners</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities#exploiting-routing-based-ssrf-to-bypass-restrictions">Exploiting routing-based SSRF to bypass restrictions</a>
+                    </li>
+                    <li>
+                        <a href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities#defending-against-ai-powered-scanner-vulnerabilities">Defending against AI-powered scanner vulnerabilities</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <a href="/web-security/all-labs#web-llm-attacks">View all Web LLM attacks labs</a>
+            </li>
+        </ul>
+    
+            </nav>
+        </aside>
+        <main>
+            
+
+
+
+<ul class="breadcrumb-list" itemscope itemtype="http://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem"><a itemscope itemtype="http://schema.org/Thing" itemprop="item" href="/web-security"><span itemprop="name">Web Security Academy</span></a><meta itemprop="position" content="1" /></li><li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem"><a itemscope itemtype="http://schema.org/Thing" itemprop="item" href="/web-security/llm-attacks"><span itemprop="name">Web LLM attacks</span></a><meta itemprop="position" content="2" /></li><li itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem"><a itemscope itemtype="http://schema.org/Thing" itemprop="item" href="/web-security/llm-attacks/ai-powered-scanner-vulnerabilities"><span itemprop="name">AI-powered scanner vulnerabilities</span></a><meta itemprop="position" content="3" /></li></ul>    <div class="section theme-white">
+
+        <h1 class="heading-2">AI-powered scanner vulnerabilities</h1><p>
+    Application security teams often deploy AI-powered scanners that use Large Language Models (LLMs) to scan web applications for vulnerabilities.
+</p><p>
+    While designed to improve security testing efficiency, these agents introduce a new attack surface. If a scanner can be influenced by attacker-controlled content, it may be manipulated into performing unintended actions, accessing internal resources, or exfiltrating sensitive information.
+</p><p>
+    In this section, we'll explore how these agents operate and the techniques that can be used to compromise the scanning environment.
+</p><h2 id="what-are-ai-powered-web-application-security-scanners" chunk-id="3A8F2B1C9D4E6F7A0B5C8D2E1F4A7B3C">What are AI-powered web application security scanners?</h2><p>
+    AI-powered scanners are web security testing tools that combine traditional crawling and request generation with LLM-driven reasoning. Like traditional Dynamic Application Security Testing (DAST) scanners, they can:
+</p><ul>
+    <li>Authenticate as users.</li>
+    <li>Crawl applications.</li>
+    <li>Send HTTP requests.</li>
+    <li>Chain multiple actions.</li>
+</ul><h3 id="traditional-vs-ai-powered-scanners" chunk-id="7C4D9E2F5A1B8C3D6E0F9A4B7C2D5E8F">Traditional vs. AI-powered scanners</h3><p>
+    The key difference between traditional and AI-powered scanners is how decisions are made.
+</p><p>
+    Traditional scanners use a rigid, instruction-based architecture. Because these tools lack semantic understanding, they cannot "read" a page to determine its purpose. Instead, they rely on pattern matching and known vulnerability signatures.
+</p><p>
+    In contrast, AI-powered scanners replace rigid logic with autonomous reasoning. Rather than following a static script, these tools use LLMs to interpret web content and plan their next actions.
+</p><p>
+    Some key behaviors of AI-powered scanners from a security perspective include:
+</p><ul>
+    <li><strong>Using LLM reasoning to decide what to test next</strong>. They evaluate the state of the application to determine a logical next step.</li>
+    <li><strong>Interpreting application responses semantically</strong>. They "read" the text in a response to understand its context, enabling them to identify complex business logic that a traditional scanner might ignore.</li>
+    <li><strong>Selecting tools and constructing requests based on model output</strong>. Some AI scanners use "tool-calling" capabilities to interact with APIs, databases, or UI elements based on their own internal reasoning.</li>
+</ul><h2 id="ai-powered-scanner-vulnerabilities" cms-ignore-validation="DUPLICATE_HEADINGS" chunk-id="B5E8A1D4F7C2E5B8A1D4F7C2E5B8A1D4">AI-powered scanner vulnerabilities</h2><p>
+    Most AI-powered scanner vulnerabilities arise when attacker-controlled content influences the scanner's reasoning and tool usage. This occurs because these scanners treat the text they analyze as a source of information to plan their next move. If the AI model cannot reliably distinguish between application data and instructions, then untrusted content can alter scanner behavior.
+</p><h3 id="indirect-prompt-injection-in-ai-powered-scanners" chunk-id="F2C5A8B1E4D7A0F3C6B9E2D5A8C1F4B7">Indirect prompt injection in AI-powered scanners</h3><p>
+    Indirect prompt injection is a significant risk with AI agents. This occurs when an attacker embeds malicious instructions in stored content, which the scanner then treats as part of its action plan.
+</p><p>
+    The attack typically follows this sequence:
+</p><ol>
+    <li>Malicious instructions are embedded in stored content, for example, within comments or blog posts.</li>
+    <li>The scanner reads this content during its crawl process.</li>
+    <li>The LLM interprets the injected text as actionable instructions rather than passive data.</li>
+    <li>The scanner executes tool calls or generates requests based on the injected text.</li>
+</ol><p>
+    This can lead to tool misuse. Some common consequences of this include:
+</p><ul>
+    <li><strong>Performing unintended state-changing actions</strong>. For example, the scanner might delete users or modify account settings.</li>
+    <li><strong>Accessing sensitive data</strong>. The scanner may be instructed to access database records or configuration files.</li>
+    <li><strong>Making unauthorized internal requests</strong>. The scanner may interact with internal APIs that are not exposed to the public internet.</li>
+</ul><p>
+    These vulnerabilities can have severe consequences because scanners often run inside internal networks, operate with authenticated sessions, and have access to APIs or services unavailable to external users.
+</p><p>
+    Conceptually, this attack resembles Cross-Site Request Forgery (CSRF). In both cases, the attacker cannot directly perform the protected action themselves. Instead, they trick a more-privileged actor into doing it on their behalf. In this scenario, that actor is an LLM-driven autonomous agent rather than the user's browser.
+</p><h3 id="crafting-effective-injection-prompts" chunk-id="A9D2F5C8B1E4A7D0F3C6A9D2F5C8B1E4">Crafting effective injection prompts</h3><p>
+    The phrasing and framing of an injection prompt can significantly affect its chances of success. A simple instruction like "delete user carlos" is less likely to succeed than one that presents itself as authoritative or legitimate.
+</p><p>
+    Common techniques include:
+</p><ul>
+    <li><strong>Adopting a persona</strong>: Framing the instruction as coming from a trusted source, such as a security researcher or system administrator, can make the LLM more likely to comply.</li>
+    <li><strong>Social engineering</strong>: Presenting the instruction as a legitimate request (for example, a security finding that requires verification) can make the instruction appear credible and reduce the chance the model refuses it.</li>
+    <li><strong>Urgency and consequence</strong>: Implying that the instruction is required to prevent harm or data loss can reinforce compliance.</li>
+</ul><div class="highlightedarea">
+    <h4>Note</h4>
+    <p>
+        When testing injection prompts, consider where you place them. If a scanner processes multiple injections on the same page, conflicting instructions can confuse the model and reduce the effectiveness of your attack. Spreading injection attempts across different locations gives each one a cleaner context to work with.
+    </p>
+</div><div widget-id="academy-labstatus" widget-lab-id="F553D26639323741882A8E6A3F3FB79167E594BB7B2C044C795FE0A447089D30"></div><h3 id="data-exfiltration-via-ai-powered-scanners" chunk-id="D6A9C2F5B8E1D4A7C0F3B6D9A2C5F8E1">Data exfiltration via AI-powered scanners</h3><p>
+    Data exfiltration is a common consequence of indirect prompt injection. While an attacker might use prompt injection to trigger state-changing actions, they can also use it to disclose sensitive information that is otherwise inaccessible.
+</p><p>
+    The attack typically follows this sequence:
+</p><ol>
+    <li>The scanner retrieves sensitive data as part of its normal testing workflow, such as crawling an admin-only configuration page or an internal API.</li>
+    <li>The attacker provides malicious instructions via untrusted content, for example a product review, that the scanner processes during its crawl.</li>
+    <li>The injected prompt directs the LLM to disclose the sensitive data.</li>
+    <li>The scanner outputs the sensitive data to a location visible to the attacker, for example by posting it in a public-facing form or a feedback field.</li>
+</ol><p>
+    For example, a scanner might be tricked into "testing" an internal endpoint and then posting the retrieved credentials publicly.
+</p><div widget-id="academy-labstatus" widget-lab-id="D18417033E8141B19293BE7DF1878EDCDDA4A7509800B5721E0F4DAD954CA8C5"></div><h3 id="exploiting-routing-based-ssrf-to-bypass-restrictions" chunk-id="E3F6A9D2C5B8E1F4A7D0C3F6A9D2C5B8">Exploiting routing-based SSRF to bypass restrictions</h3><p>
+    Even if high-risk APIs are restricted and sensitive data is protected, AI-powered scanners can still be manipulated into making unintended internal requests. This is because scanners typically run inside the internal network and can construct arbitrary HTTP requests, effectively making them a programmable Server-Side Request Forgery (SSRF) vector.
+</p><p>
+    One way to exploit this is through routing-based SSRF. This can occur via several mechanisms, including open redirects, URL interpretation discrepancies between components, and Host header manipulation. In each case, the attacker exploits a flaw in how the application or its infrastructure handles request routing to redirect the scanner to an unintended destination.
+</p><p>
+    Host header manipulation is a particularly powerful technique in this context. Web applications often use the Host header to route requests to the correct internal service. By modifying this header, an attacker can redirect the scanner's requests to internal services that would normally be inaccessible from the public internet.
+</p><p>
+    The attack typically follows this sequence:
+</p><ol>
+    <li>The attacker injects a prompt instructing the scanner to send a request to an internal path, such as <code>/admin</code>, with a modified Host header pointing to an internal IP address.</li>
+    <li>The scanner executes the request from its privileged position inside the internal network.</li>
+    <li>The response is processed by the scanner and can be exfiltrated back to the attacker, for example by posting it as a comment.</li>
+</ol><p>
+    This chains three elements that individually pose significant risk, but together enable a potentially even more severe attack:
+</p><ul>
+    <li>Prompt injection gives the attacker control over the scanner's reasoning.</li>
+    <li>Host header manipulation controls where the request is routed.</li>
+    <li>The scanner's privileged network position provides access to internal resources an external attacker cannot reach directly.</li>
+</ul><p>
+    In this scenario, the scanner is not just a victim of an attack, but a tool used to exploit classic web vulnerabilities from a position of trust that an external attacker could not otherwise reach.
+</p><div class="highlightedarea">
+    <h4>More information</h4>
+    <p>For further information on exploiting routing-based SSRF, see the <a href="/web-security/host-header/exploiting/lab-host-header-routing-based-ssrf">Routing-based SSRF lab</a>.</p>
+</div><div widget-id="academy-labstatus" widget-lab-id="7CE40A52BD305D8F85D8DD06E83819F2D682BFD364BEE8B3511ED3AA9EEC3A5C"></div><h2 id="defending-against-ai-powered-scanner-vulnerabilities" chunk-id="C0F3A6D9B2E5C8F1A4D7B0C3F6A9D2E5">Defending against AI-powered scanner vulnerabilities</h2><p>
+    To mitigate the risks associated with AI-powered scanners, we recommend you apply robust security principles that assume the scanner's reasoning engine can be compromised. Even if an attacker successfully influences the LLM's plan via indirect prompt injection, the scanner's environment and permissions should remain constrained.
+</p><h3 id="secure-design-principles" chunk-id="A7D0C3F6B9E2A5D8C1F4A7D0C3F6B9E2">Secure design principles</h3><p>
+    We recommend you apply the following design principles:
+</p><ul>
+    <li><strong>Restrict scanner credentials and access controls</strong>. Apply the principle of least privilege by providing the scanner only with the permissions necessary for the current test.</li>
+    <li><strong>Separate scanning identity from admin identity</strong>. When configuring an AI-powered scanner, use dedicated testing accounts that do not share the same permissions as real admin users to prevent privilege escalation.</li>
+    <li><strong>Apply server-side controls to the scanner</strong>. Do not assume an LLM-driven scanner will correctly enforce policy or "refuse" malicious instructions. Always enforce access controls at the application or API level rather than relying on the model's internal logic.</li>
+    <li><strong>Treat all user-modifiable content as untrusted input</strong>. Assume any text retrieved from a database, such as a comment or profile field, is a potential injection vector that can alter the scanner's behavior.</li>
+</ul><div widget-id="academy-labstatus" widget-lab-id="2FBD4763A2E002DEB0D9A9250E106C56028227D770D2FF30F2E9CF9423C47DFD"></div>
+        
+        <div widget-id="academy-registration-footer"></div>
+    
+    </div>
+
+
+    <script src="/bundles/static-content/public/scripts/main.js?v=NgmUiCsYwhVhi9Bra0okrfjnxkY" nonce="iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne"></script>
+    <script src="/bundles/static-content/public/scripts/web-security.js?v=aLTI8D4Ps-_XoohiDNpR1LAARC0" nonce="iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne"></script>
+
+            
+        <div class="sidebar-content">
+            <div widget-id="academy-accountstatus"></div>
+            <div class="sidebar-trial-advert">
+                <img alt="Try Burp Suite for Free" src="/content/images/logos/burp-suite-icon.svg">
+                <h4>Test for vulnerabilities using Burp Suite</h4>
+                <a class="button-white" href="https://portswigger.net/burp">Try for free</a>
+            </div>
+        </div>
+    
+        </main>
+    </div>
+</div>
+<footer class="wrapper">
+    <div class="container">
+        <div>
+            <p>Burp Suite</p>
+            <a href="/burp/vulnerability-scanner">Web vulnerability scanner</a>
+            <a href="/burp">Burp Suite Editions</a>
+            <a href="/burp/releases">Release Notes</a>
+        </div>
+        <div>
+            <p>Vulnerabilities</p>
+            <a href="/web-security/cross-site-scripting">Cross-site scripting (XSS)</a>
+            <a href="/web-security/sql-injection">SQL injection</a>
+            <a href="/web-security/csrf">Cross-site request forgery</a>
+            <a href="/web-security/xxe">XML external entity injection</a>
+            <a href="/web-security/file-path-traversal">Directory traversal</a>
+            <a href="/web-security/ssrf">Server-side request forgery</a>
+        </div>
+        <div>
+            <p>Customers</p>
+            <a href="/organizations">Organizations</a>
+            <a href="/testers">Testers</a>
+            <a href="/developers">Developers</a>
+        </div>
+        <div>
+            <p>Company</p>
+            <a href="/about">About</a>
+            <a href="/careers">Careers</a>
+            <a href="/about/contact">Contact</a>
+            <a href="/legal">Legal</a>
+            <a href="/privacy">Privacy Notice</a>
+            <a href="/modern-slavery-statement">Modern Slavery Statement</a>
+        </div>
+        <div>
+            <p>Insights</p>
+            <a href="/web-security">Web Security Academy</a>
+            <a href="/blog">Blog</a>
+            <a href="/research">Research</a>
+        </div>
+        <div>
+            <a href="/"><img src="/content/images/logos/portswigger-logo.svg" alt="PortSwigger Logo"
+                             class="footer-logo"></a>
+            <a class="button-outline-blue-small camelcase" href="https://twitter.com/Burp_Suite" rel="noreferrer"><span
+                    class="icon-twitter"></span> Follow us</a>
+            <p class="grey">&copy; 2026 PortSwigger Ltd.</p>
+        </div>
+    </div>
+</footer>
+<a href="#top" class="back-to-top"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
+    <polygon points="4.07 14.7 5.03 15.78 12.48 9.13 19.94 15.78 20.9 14.7 12.48 7.2 4.07 14.7" fill="#f63"/>
+    <path d="M13,0A13,13,0,1,0,26,13,13,13,0,0,0,13,0Zm0,24.56A11.56,11.56,0,1,1,24.56,13,11.58,11.58,0,0,1,13,24.56Z"
+          fill="#f63"/>
+</svg></a>
+
+
+<script nonce="iZGkKvEBqsbUKbuJXhgE6vqLJ5GTJOne" type="text/javascript">
+    piAId = '1067743';
+    piCId = '';
+    piHostname = 'go.portswigger.net';
+
+    (function () {
+        function async_load() {
+            var s = document.createElement('script');
+            s.type = 'text/javascript';
+            s.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + piHostname + '/pd.js';
+            var c = document.getElementsByTagName('script')[0];
+            c.parentNode.insertBefore(s, c);
+        }
+
+        if (window.attachEvent) {
+            window.attachEvent('onload', async_load);
+        } else {
+            window.addEventListener('load', async_load, false);
+        }
+    })();
+</script>
+</body>
+</html>
