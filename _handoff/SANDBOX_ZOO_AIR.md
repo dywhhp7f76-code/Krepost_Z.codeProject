@@ -70,6 +70,17 @@ Ataker base URL: `http://127.0.0.1:8010`
 # default DebriefMode (ROUNDTABLE_ATTACK_LOCKED=1)
 ```
 
+## Attacker / judge модель (канон)
+
+| Роль | Модель | Где |
+|------|--------|-----|
+| **Attacker / UCS judge** | **Dolphin3-Cyber-8B** Q4_K_M (~4.9 GB) | `AtakerDirty/Ataker/models/` + LM Studio `:1234` |
+| HF | `RavichandranJ/Dolphin3-Cyber-8B-GGUF` | файл `…Q4_K_M.gguf` |
+| Скачать | `scripts/download_dolphin_air.sh` | только Air, том AtakerDirty |
+| Smoke | `JUDGE=1 LIMIT=5 ./scripts/smoke_ataker_judge_air.sh` | песочница `:8010` уже up |
+
+Детали: `Ataker-boop/MODELS.md`. Uncensored **не** как sandbox guard.
+
 ## Следующее
 
 1. ~~`scripts/serve_sandbox_air.sh`~~ ✅
@@ -82,3 +93,5 @@ Ataker base URL: `http://127.0.0.1:8010`
 8. Live smoke Air: sandbox + ataker + ingest vault_sandbox
 9. ~~Round Table scaffold~~ ✅ (`serve_roundtable_air.sh`, Probnoki #60)
 10. Wire LLM speakers + SealedRedLoop nightly → receipts
+11. ~~Выбор attacker-модели: Dolphin3-Cyber-8B Q4_K_M~~ ✅ (дока + download script)
+12. Оператор на Air: `download_dolphin_air.sh` → LM Studio → `smoke_ataker_judge_air.sh`
