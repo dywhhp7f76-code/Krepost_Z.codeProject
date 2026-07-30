@@ -1,7 +1,21 @@
-# Attack vault data (separate from Trust Registry, Ataker Risk-1)
-data/
+# Ataker-Boop — red-team инструмент. Хранилище атак НИКОГДА не коммитим:
+# успешные payload'ы не должны просачиваться в репозиторий/prod (cross-
+# contamination, Risk 1). Attack Vault и отчёты — локальные артефакты.
+vault_data/
+# HF/локальный арсенал (см. docs/ATTACKER_BASE.md) — яды не в git
+fortress_data/
+attacker_data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+report*.json
 
-# Т11: seed-корпус атак — вредные промпты НЕ в git.
-# Реальные атаки лежат в seed_attacks.local.jsonl (локально, не коммитится).
-# В репо — только seed_attacks.example.jsonl (плейсхолдеры).
-seed_attacks.local.jsonl
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/

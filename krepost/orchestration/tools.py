@@ -118,14 +118,23 @@ class ToolRegistry:
 
 def make_fetch_tool(
     name: str,
-    fetch_fn: Callable[[str], Union[str, Awaitable[str]]],
+    fetch_fn: Callable[[str], Union[str, Awaitable[str]]] | None = None,
     url_guard: Optional[UrlGuard] = None,
     *,
     description: str = "Fetch a URL and return its text",
+    pin_ip: bool | None = None,
+    resolve_dns: bool | None = None,
+    fetch_timeout: float = 15.0,
 ) -> Tool:
-    """Инструмент-фетчер, у которого URL валидируется UrlGuard ДО запроса.
-    Ждёт args={'url': ...}. При отклонённом URL fetch НЕ выполняется."""
-    guard = url_guard or UrlGuard()
+    """Инструмент-фетчер: UrlGuard ДО запроса; опц. connect-time IP pin.
+
+    Если `fetch_fn` не передан — используется встроенный pinned HTTP GET.
+    """
+    from krepost.security.pinned_fetch import pinned_http_get
+
+    use_pin = pin_ip if pin_ip is not None else (fetch_fn is None)
+    want_dns = resolve_dns if resolve_dns is not None else use_pin
+    guard = url_guard or UrlGuard(resolve_dns=want_dns)
 
     async def _fn(args: Dict[str, Any]) -> str:
         url = str(args.get("url", ""))
@@ -135,6 +144,23 @@ def make_fetch_tool(
         if not verdict.allowed:
             logger.warning(f"fetch tool {name!r} blocked url: {verdict.reason}")
             return f"[fetch blocked: {verdict.reason}]"
+
+        if use_pin:
+            if not verdict.resolved_ips:
+                return "[fetch blocked: no_resolved_ips_for_pinning]"
+            try:
+                return await asyncio.to_thread(
+                    pinned_http_get,
+                    verdict.url,
+                    list(verdict.resolved_ips),
+                    timeout=fetch_timeout,
+                )
+            except Exception as e:
+                logger.warning(f"fetch tool {name!r} pinned fetch failed: {e}")
+                return f"[fetch failed: {type(e).__name__}]"
+
+        if fetch_fn is None:
+            return "[fetch blocked: no_fetch_fn]"
         if inspect.iscoroutinefunction(fetch_fn):
             return await fetch_fn(verdict.url)
         return await asyncio.to_thread(fetch_fn, verdict.url)
