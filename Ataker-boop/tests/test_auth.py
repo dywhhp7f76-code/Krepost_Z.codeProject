@@ -410,6 +410,37 @@ class TestInitCLI:
         assert captured.out.count("otpauth://") == 4
         assert "L2" in captured.out
 
+    def test_show_uri_and_status(self, tmp_path, monkeypatch, capsys):
+        secrets_dir = tmp_path / "a"
+        monkeypatch.setattr(sys, "argv",
+            ["ataker.auth", "init", "--dir", str(secrets_dir), "--kill-password", "x"])
+        main()
+        monkeypatch.setattr(sys, "argv", ["ataker.auth", "status", "--dir", str(secrets_dir)])
+        main()
+        status_out = capsys.readouterr().out
+        assert "totp_l1: ok" in status_out
+        monkeypatch.setattr(sys, "argv", ["ataker.auth", "show-uri", "--dir", str(secrets_dir)])
+        main()
+        assert capsys.readouterr().out.count("otpauth://") == 4
+
+    def test_verify_totp_cli(self, tmp_path, monkeypatch):
+        import pyotp
+        secrets_dir = tmp_path / "a"
+        monkeypatch.setattr(sys, "argv",
+            ["ataker.auth", "init", "--dir", str(secrets_dir), "--kill-password", "x"])
+        main()
+        secret = (secrets_dir / "totp_l1").read_text().strip()
+        code = pyotp.TOTP(secret).now()
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["ataker.auth", "verify", "--dir", str(secrets_dir), "--level", "L1_POISONS", "--code", code],
+        )
+        try:
+            main()
+        except SystemExit as e:
+            assert e.code == 0
+
     def test_main_init_prompts_kill_password_if_missing(self, tmp_path, monkeypatch, capsys):
         secrets_dir = tmp_path / "a"
         monkeypatch.setattr(sys, "argv", ["ataker.auth", "init", "--dir", str(secrets_dir)])

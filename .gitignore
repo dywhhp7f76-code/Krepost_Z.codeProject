@@ -45,3 +45,10 @@ build/
 # LLM models (GGUF) — НЕ пушить в git (большие файлы)
 *.gguf
 Ataker-boop/models/
+
+# Local Ataker secrets / dirty seeds / locks
+Ataker-boop/seed_attacks.local.jsonl
+Ataker-boop/.ataker/
+vault_data/
+uv.lock
+

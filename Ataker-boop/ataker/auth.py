@@ -264,13 +264,44 @@ def _totp_uri(secret: str, level: CapabilityLevel) -> str:
     return pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name="Ataker-boop")
 
 
+def _print_totp_uris(secrets_dir: Path) -> None:
+    print("=== TOTP QR-\u043a\u043e\u0434\u044b ===")
+    for level, fname in _TOTP_FILES.items():
+        p = secrets_dir / fname
+        if not p.is_file():
+            print(f"\n[{level.name}] missing: {fname}")
+            continue
+        secret = p.read_text().strip()
+        print()
+        print(f"[{level.name}]")
+        print(f"  {_totp_uri(secret, level)}")
+
+
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(prog="ataker.auth")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    p_init = sub.add_parser("init")
-    p_init.add_argument("--dir", default=os.path.expanduser("~/.ataker"))
+    default_dir = os.path.expanduser("~/.ataker")
+
+    p_init = sub.add_parser("init", help="Create secrets dir + TOTP L1-L4 + kill hash")
+    p_init.add_argument("--dir", default=default_dir)
     p_init.add_argument("--kill-password", default=None)
+
+    p_show = sub.add_parser("show-uri", help="Reprint otpauth:// URIs from existing secrets")
+    p_show.add_argument("--dir", default=default_dir)
+
+    p_status = sub.add_parser("status", help="Show which secret files exist (no secrets printed)")
+    p_status.add_argument("--dir", default=default_dir)
+
+    p_verify = sub.add_parser("verify", help="Verify a TOTP code for a level")
+    p_verify.add_argument("--dir", default=default_dir)
+    p_verify.add_argument(
+        "--level",
+        required=True,
+        choices=[lv.name for lv in CapabilityLevel.UNLOCKABLE],
+    )
+    p_verify.add_argument("--code", required=True)
+
     args = parser.parse_args()
 
     if args.cmd == "init":
@@ -278,25 +309,48 @@ def main() -> None:
         if kill_pw is None:
             kill_pw = input("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 KILL PASSWORD (L5): ").strip()
             if not kill_pw:
-                print("\u041e\u0448\u0438\u0431\u043a\u0430: kill password \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c", file=sys.stderr)
+                print(
+                    "\u041e\u0448\u0438\u0431\u043a\u0430: kill password \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
 
         init_secrets_dir(args.dir, kill_pw)
         print(f"\u2713 \u0421\u0435\u043a\u0440\u0435\u0442\u044b \u0441\u043e\u0437\u0434\u0430\u043d\u044b \u0432 {args.dir}")
         print()
-        print("=== TOTP QR-\u043a\u043e\u0434\u044b ===")
-        for level, fname in _TOTP_FILES.items():
-            secret = (Path(args.dir) / fname).read_text().strip()
-            uri = _totp_uri(secret, level)
-            print()
-            print(f"[{level.name}]")
-            print(f"  {uri}")
+        _print_totp_uris(Path(args.dir))
         ingest = (Path(args.dir) / "ingest_token").read_text().strip()
         print()
         print("=== Ingest token ===")
         print(f"  {ingest}")
         print()
         print("\u26a0\ufe0f  \u0421\u041e\u0425\u0420\u0410\u041d\u0418 KILL PASSWORD \u0412 \u041d\u0410\u0414\u0415\u0416\u041d\u041e\u0415 \u041c\u0415\u0421\u0422\u041e.")
+        return
+
+    if args.cmd == "show-uri":
+        secrets_dir = Path(args.dir)
+        if not secrets_dir.is_dir():
+            print(f"\u043d\u0435\u0442 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430: {secrets_dir}", file=sys.stderr)
+            sys.exit(1)
+        _print_totp_uris(secrets_dir)
+        return
+
+    if args.cmd == "status":
+        secrets_dir = Path(args.dir)
+        print(f"dir={secrets_dir} exists={secrets_dir.is_dir()}")
+        if not secrets_dir.is_dir():
+            sys.exit(1)
+        for fname in list(_TOTP_FILES.values()) + ["kill_password_hash", "ingest_token"]:
+            p = secrets_dir / fname
+            print(f"  {fname}: {'ok' if p.is_file() else 'MISSING'}")
+        return
+
+    if args.cmd == "verify":
+        auth = AuthManager.from_secrets_dir(args.dir)
+        level = CapabilityLevel[args.level]
+        ok = auth.verify_totp(level, args.code)
+        print("OK" if ok else "FAIL")
+        sys.exit(0 if ok else 2)
 
 
 if __name__ == "__main__":
