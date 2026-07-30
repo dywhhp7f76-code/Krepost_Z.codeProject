@@ -1,0 +1,4 @@
+# ingested/
+
+Сюда кидай сырые заметки, выдержки из отчётов, разборы lab/EDB.  
+Имя файла: `YYYY-MM-DD_<slug>.md` + frontmatter из `../00-TEMPLATE.md`.
