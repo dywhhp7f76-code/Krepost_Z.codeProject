@@ -15,6 +15,7 @@ from krepost.roundtable.mode import ModeGate
 from krepost.roundtable.schemas import (
     AttackReceipt,
     DefenseReceipt,
+    RoundReceipt,
     Speaker,
 )
 from krepost.roundtable.session import RoundTable
@@ -122,6 +123,11 @@ def create_roundtable_app(
     def post_defense(receipt: DefenseReceipt):
         rt.add_defense_receipt(receipt)
         return {"ok": True, "defense_id": receipt.defense_id}
+
+    @app.post("/v1/roundtable/receipts/round")
+    def post_round(receipt: RoundReceipt):
+        rt.add_round_receipt(receipt)
+        return {"ok": True, "round_id": receipt.round_id}
 
     @app.post("/v1/roundtable/post")
     def post_utt(body: PostBody):

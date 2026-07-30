@@ -10,8 +10,8 @@ from krepost.roundtable.schemas import (
     AttackReceipt,
     DefenseReceipt,
     MaskedUtterance,
+    RoundReceipt,
     Speaker,
-    TableMode,
 )
 
 
@@ -24,6 +24,7 @@ class RoundTable:
         self._utterances: List[MaskedUtterance] = []
         self._attacks: List[AttackReceipt] = []
         self._defenses: List[DefenseReceipt] = []
+        self._rounds: List[RoundReceipt] = []
 
     def mode(self) -> ModeSnapshot:
         return self.gate.snapshot()
@@ -41,6 +42,17 @@ class RoundTable:
         self.broker.register_ids(ids)
         return receipt
 
+    def add_round_receipt(self, receipt: RoundReceipt) -> RoundReceipt:
+        """System-sealed round; also registers attack/defense halves."""
+        self.add_attack_receipt(receipt.attack)
+        self.add_defense_receipt(receipt.defense)
+        self._rounds.append(receipt)
+        self.broker.register_ids([receipt.round_id, receipt.input_fingerprint])
+        return receipt
+
+    def latest_round(self) -> Optional[RoundReceipt]:
+        return self._rounds[-1] if self._rounds else None
+
     def post(
         self,
         speaker: Speaker | str,
@@ -57,7 +69,6 @@ class RoundTable:
                     "combat_live_forbidden",
                     snap.reason,
                 )
-            # Operator may still annotate in combat as local notes? Spec: live closed.
             raise RedactionError("combat_live_forbidden", snap.reason)
 
         utt = self.broker.mask(sp, body, cites)
@@ -71,5 +82,6 @@ class RoundTable:
         return {
             "attacks": [a.model_dump(mode="json") for a in self._attacks],
             "defenses": [d.model_dump(mode="json") for d in self._defenses],
+            "rounds": [r.model_dump(mode="json") for r in self._rounds],
             "mode": self.mode().mode.value,
         }

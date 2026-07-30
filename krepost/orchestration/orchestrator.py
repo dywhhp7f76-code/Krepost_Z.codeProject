@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from krepost.memory.episodic import EpisodicMemory
     from krepost.memory.store import MemoryStore
     from krepost.orchestration.router import Router
+    from krepost.roundtable.session import RoundTable
     from krepost.security.pipeline import SecurityPipeline
 
 try:
@@ -62,6 +63,7 @@ class OrchestrationResult:
     attack_vector: Optional[str] = None
     latency_ms: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    round_id: Optional[str] = None
 
     @property
     def ok(self) -> bool:
@@ -81,6 +83,7 @@ class Orchestrator:
         vault_name: str = "Krepost",
         episodic_memory: Optional["EpisodicMemory"] = None,
         occ_reader: Optional[Any] = None,
+        round_table: Optional["RoundTable"] = None,
     ):
         self.pipeline = pipeline
         self.router = router
@@ -90,6 +93,34 @@ class Orchestrator:
         self.vault_name = vault_name
         self.episodic_memory = episodic_memory
         self.occ_reader = occ_reader
+        self.round_table = round_table
+
+    def _seal_round(
+        self,
+        *,
+        text: str,
+        ctx: SecurityContext,
+        result: OrchestrationResult,
+    ) -> OrchestrationResult:
+        """System RoundReceipt after combat half — optional RoundTable sink."""
+        try:
+            from krepost.roundtable.receipts import round_receipt_from_pipeline
+
+            receipt = round_receipt_from_pipeline(
+                ctx,
+                input_text=text,
+                latency_ms=result.latency_ms,
+            )
+            if self.round_table is not None:
+                self.round_table.add_round_receipt(receipt)
+            result.round_id = receipt.round_id
+            result.metadata = {
+                **result.metadata,
+                "round_receipt": receipt.model_dump(mode="json"),
+            }
+        except Exception as e:  # pragma: no cover — never break combat on seal
+            logger.warning(f"round receipt seal failed: {type(e).__name__}: {e}")
+        return result
 
     async def _record(self, text: str, result: OrchestrationResult) -> None:
         await record_episode(
@@ -128,6 +159,7 @@ class Orchestrator:
                 latency_ms=(time.perf_counter() - start) * 1000,
                 metadata={"trusted": in_ctx.metadata.get("trusted", False)},
             )
+            result = self._seal_round(text=text, ctx=in_ctx, result=result)
             await self._record(text, result)
             return result
 
@@ -220,6 +252,7 @@ class Orchestrator:
                 latency_ms=(time.perf_counter() - start) * 1000,
                 metadata={"error": type(e).__name__, **rag_meta},
             )
+            result = self._seal_round(text=text, ctx=in_ctx, result=result)
             await self._record(text, result)
             return result
 
@@ -229,6 +262,9 @@ class Orchestrator:
         out_ctx = await self.pipeline.process_output(out_ctx)
 
         blocked_out = out_ctx.is_compromised
+        seal_ctx = out_ctx if blocked_out else in_ctx
+        if blocked_out and not seal_ctx.violation_layer:
+            seal_ctx.violation_layer = out_ctx.violation_layer
         result = OrchestrationResult(
             session_id=session_id,
             status="blocked_output" if blocked_out else "ok",
@@ -242,5 +278,6 @@ class Orchestrator:
             latency_ms=(time.perf_counter() - start) * 1000,
             metadata={"trusted": in_ctx.metadata.get("trusted", False), **rag_meta},
         )
+        result = self._seal_round(text=text, ctx=seal_ctx, result=result)
         await self._record(text, result)
         return result

@@ -25,6 +25,13 @@ from krepost.roundtable.gap import (
     receipt_facts_for_vault,
     hypothesis_accuracy,
 )
+from krepost.roundtable.receipts import (
+    build_round_receipt,
+    defense_from_context,
+    fingerprint_input,
+    round_receipt_from_pipeline,
+)
+from krepost.roundtable.session import RoundTable
 
 __all__ = [
     "AttackClass",
@@ -51,4 +58,9 @@ __all__ = [
     "note_receipt_gap",
     "receipt_facts_for_vault",
     "hypothesis_accuracy",
+    "build_round_receipt",
+    "defense_from_context",
+    "fingerprint_input",
+    "round_receipt_from_pipeline",
+    "RoundTable",
 ]
