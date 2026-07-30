@@ -498,3 +498,9 @@ EXIT=0
 - feat: normalize.py — ASCII fast-path и MAX_NORMALIZE_LENGTH guard (аддитивно, API не менялся; full-width записи в _HOMOGLYPH_MAP не добавлены — NFKC уже покрывает)
 - Коммит: https://github.com/dywhhp7f76-code/Krepost-V3/commit/a12f37545c6aeb99b68bc0f0ad8f7ec504451717
 - Проверка: python -m pytest Probnoki/test_19_normalize_additions.py -q → 14 passed in 2.36s
+
+## 2026-07-30 — RoundReceipt wire + AtakerDirty prep
+
+- Orchestrator seals RoundReceipt → RoundTable (Probnoki #64).
+- AtakerDirty SSD: plugins, Obsidian vault, fortress_data layout, env.fortress.sh, eject_for_air.sh.
+- Air 10.0.0.2 still down — physical SSD move to Air pending operator.
