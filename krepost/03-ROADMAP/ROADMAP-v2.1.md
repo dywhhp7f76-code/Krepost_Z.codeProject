@@ -8,7 +8,7 @@ hardware:
   mac_studio: M4 Max 64GB 1TB
   macbook_air: M5 32GB 1TB
   fast_ssd: WD SN850X 2TB TB5 (80Gbps)
-  archive_hdd: 6TB
+  archive_hdd: 4TB
   ipad: Air M4 256GB
   iphone: Air 256GB
 models:
@@ -63,7 +63,7 @@ Patch v1.1 готов. Компактный reader (0.6B/1.7B) для RAG.
 
 ### 0.7 SMART_CACHE v2.1
 Трёхслойный кэш (L1 exact/L2 semantic/L3 full).
-Уже реализован в src/krepost/cache/.
+Уже реализован в krepost/cache/.
 Требует: интеграция с Security Layer (кэшировать только GREEN).
 
 ### 0.8 Source Citations
@@ -87,7 +87,7 @@ Patch v1.1 готов. Компактный reader (0.6B/1.7B) для RAG.
 
 ### 1.4 Инфраструктура
 config.py, models.py, __init__.py, .env.example, requirements.txt, backup.sh.
-backup.sh: рабочее (SN580) и бэкап (HDD) — РАЗНЫЕ диски.
+backup.sh: рабочее (SN850X) и бэкап (HDD) — РАЗНЫЕ диски.
 
 ### 1.5 Железо-доделки
 SATA-бокс/док для 3.5" HDD (питание 12В) — проверить, тянет ли имеющаяся док-станция.
