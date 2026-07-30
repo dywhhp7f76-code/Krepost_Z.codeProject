@@ -336,7 +336,7 @@ def create_app(
             result = await agent.run(req.text, req.session_id)
             return _agent_to_response(result)
 
-async def _do_ingest(filename: str, content: str, private: bool) -> JSONResponse:
+    async def _do_ingest(filename: str, content: str, private: bool) -> JSONResponse:
         if not content.strip():
             return JSONResponse(status_code=400, content={"detail": "empty_content"})
         try:
